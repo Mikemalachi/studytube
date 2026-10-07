@@ -216,6 +216,7 @@ input::placeholder, textarea::placeholder{color:var(--text-3);}
 .page > *{flex-shrink:0;}
 .tabbar{flex:0 0 auto;}
 /* handwriting */
+#inkEditor,#inkEditor *{-webkit-user-select:none; user-select:none; -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent;}
 #inkEditor{position:fixed; z-index:28; display:none; flex-direction:column; background:#fffef9; border-radius:var(--radius-md); overflow:hidden; border:1px solid var(--glass-border); box-shadow:0 10px 30px rgba(0,0,0,.45); left:0; top:0; width:0; height:0;}
 #inkEditor.open{display:flex;}
 #inkEditor.full{border-radius:0; border:0;}
@@ -2896,7 +2897,12 @@ window.addEventListener('pointerup', (e)=>{ if(inkSt && inkSt.cur && e.pointerId
 window.addEventListener('pointercancel', (e)=>{ if(inkSt && inkSt.cur && e.pointerId === inkSt.pid) inkFinishStroke(); }, true);
 window.addEventListener('blur', ()=>{ if(inkSt && inkSt.cur) inkFinishStroke(); });
 inkCanvas.addEventListener('pointercancel', (e)=>{ if(inkSt && inkSt.cur && e.pointerId === inkSt.pid) inkFinishStroke(); if(e.pointerType === 'touch') inkTouches.delete(e.pointerId); });
-inkCanvas.addEventListener('contextmenu', (e)=>e.preventDefault());
+/* iPad: stop the long-press / right-click menu, text selection and the magnifier while writing */
+['contextmenu','selectstart','dragstart','gesturestart'].forEach(t=>inkEl.addEventListener(t, (e)=>e.preventDefault(), true));
+document.addEventListener('contextmenu', (e)=>{ if(inkSt) e.preventDefault(); }, true);
+['touchstart','touchmove'].forEach(t=>inkCanvas.addEventListener(t, (e)=>{ if(inkSt && inkSt.tool !== 'hand' && e.cancelable) e.preventDefault(); }, {passive:false}));
+inkCanvas.addEventListener('mousedown', (e)=>{ if(inkSt) e.preventDefault(); });
+inkCanvas.addEventListener('auxclick', (e)=>e.preventDefault());
 
 /* toolbar */
 inkEl.querySelectorAll('[data-tool]').forEach(b=>b.addEventListener('click', ()=>{ if(inkSt){ inkSt.tool = b.dataset.tool; updateInkUi(); } }));
