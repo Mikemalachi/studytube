@@ -505,13 +505,15 @@ select{background:rgba(255,255,255,0.05); color:var(--text-1); border:1px solid 
 
     <div class="card" style="margin-bottom:14px;">
       <div class="field-label">Network</div>
-      <p style="font-size:12px; color:var(--text-2); line-height:1.5;">In the Android app, requests go straight to YouTube. In the browser (PC/iPad) they go through a public relay, which can occasionally rate-limit — if checks fail, retry or add your own relay below.</p>
+      <p style="font-size:12px; color:var(--text-2); line-height:1.5;">In the Android app, requests go straight to YouTube. In the browser (PC/iPad) they must go through a relay. Free public relays are unreliable, so add your own (free Cloudflare Worker, see README) below, then tap Test relays.</p>
       <select id="proxySelect" style="margin-top:10px;">
         <option value="0">Relay 1 (allorigins)</option>
         <option value="1">Relay 2 (corsproxy)</option>
       </select>
       <div class="field-label" style="margin-top:14px;">Your own relay (optional)</div>
       <input type="text" id="customProxyInput" placeholder="https://your-worker.workers.dev/?url={url}">
+      <button class="btn sm block" id="testRelayBtn" style="margin-top:10px;">🧪 Test relays</button>
+      <div id="relayTestResult" style="font-size:11.5px; color:var(--text-2); line-height:1.7; margin-top:8px;"></div>
     </div>
 
     <div class="card" style="border-color:rgba(248,113,113,0.35);">
@@ -541,7 +543,7 @@ select{background:rgba(255,255,255,0.05); color:var(--text-1); border:1px solid 
     <div class="field-label">Paste a channel URL, @handle, UC ID, or any video/Shorts URL</div>
     <input type="text" id="channelInput" placeholder="@veritasium or https://youtube.com/... ">
     <button class="btn primary block" style="margin-top:14px;" id="channelSubmitBtn">Resolve & Add</button>
-    <div id="channelResolveStatus" style="font-size:11.5px; color:var(--text-3); margin-top:10px; text-align:center;"></div>
+    <div id="channelResolveStatus" style="font-size:11.5px; color:var(--text-3); margin-top:10px; text-align:center; line-height:1.5; word-break:break-word;"></div>
   </div>
 </div>
 
@@ -565,25 +567,35 @@ select{background:rgba(255,255,255,0.05); color:var(--text-1); border:1px solid 
    STORAGE LAYER — versioned localStorage wrapper
 ============================================================ */
 const DB_KEY = "studytube_v1";
-function loadDB(){
-  try{
-    const raw = localStorage.getItem(DB_KEY);
-    if(raw) return JSON.parse(raw);
-  }catch(e){ console.warn("DB parse failed, resetting", e); }
+function defaultDB(){
   return {
-    channels:[],            // {id, channelId, title, handle, thumb, addedAt}
-    videos:{},              // videoId -> {videoId, channelId, title, thumb, published, url, seen}
-    channelIdCache:{},       // rawInput -> channelId
-    history:[],              // videoIds, most recent first
+    channels:[],            // {id, channelId, title, handle, lastChecked, lastError, addedAt}
+    videos:{},              // videoId -> {videoId, channelId, channelTitle, title, thumb, published, url, seen}
+    channelIdCache:{},      // rawInput -> channelId
+    history:[],             // videoIds, most recent first
     favorites:[],
     watchLater:[],
     completed:[],
-    notes:{},                 // videoId -> [{id,text,ts,pinned,createdAt}]
-    checkpoints:{},           // videoId -> [{id,label,seconds}]
-    resume:{},                 // videoId -> {seconds, updatedAt}
-    categories:{},              // name -> [videoIds]
-    settings:{ proxy:0 }
+    notes:{},               // videoId -> [{id,text,ts,pinned,createdAt}]
+    checkpoints:{},         // videoId -> [{id,label,seconds}]
+    resume:{},              // videoId -> {seconds, updatedAt}
+    categories:{},          // name -> [videoIds]
+    settings:{ proxy:0, customProxy:"" }
   };
+}
+function loadDB(){
+  const d = defaultDB();
+  try{
+    const raw = localStorage.getItem(DB_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(parsed && typeof parsed === "object"){
+        Object.assign(d, parsed);
+        d.settings = Object.assign({proxy:0, customProxy:""}, parsed.settings || {});
+      }
+    }
+  }catch(e){ console.warn("DB parse failed, using defaults", e); }
+  return d;
 }
 let DB = loadDB();
 let saveTimer=null;
@@ -646,49 +658,81 @@ async function downloadBlob(filename, content, mime){
    (public YouTube pages have no CORS headers for browser fetch)
 ============================================================ */
 const IS_NATIVE = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+// Paste your own relay here once (Cloudflare Worker URL) so every device uses it automatically.
+// Example: "https://studytube-relay.yourname.workers.dev/?url={url}"
+const DEFAULT_RELAY = "";
+
+function customRelayUrl(){
+  const c = (DB.settings.customProxy||"").trim() || DEFAULT_RELAY;
+  return (c && c.includes("{url}")) ? c : "";
+}
 function relayBuilders(){
-  const builtins = [
-    u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
-    u => "https://corsproxy.io/?url=" + encodeURIComponent(u)
+  const list = [];
+  const custom = customRelayUrl();
+  if(custom) list.push({name:"your relay", build:u=>custom.replace("{url}", encodeURIComponent(u))});
+  const pub = [
+    {name:"allorigins", build:u=>"https://api.allorigins.win/raw?url="+encodeURIComponent(u)},
+    {name:"codetabs",   build:u=>"https://api.codetabs.com/v1/proxy/?quest="+encodeURIComponent(u)},
+    {name:"corsproxy",  build:u=>"https://corsproxy.io/?url="+encodeURIComponent(u)}
   ];
-  if((DB.settings.proxy||0) === 1) builtins.reverse();
-  const custom = (DB.settings.customProxy||"").trim();
-  if(custom && custom.includes("{url}")) builtins.unshift(u => custom.replace("{url}", encodeURIComponent(u)));
-  return builtins;
+  if((DB.settings.proxy||0) === 1) pub.reverse();
+  return list.concat(pub);
 }
 function withTimeout(p, ms){
-  return Promise.race([p, new Promise((_,rej)=>setTimeout(()=>rej(new Error("Timed out")), ms))]);
+  return Promise.race([p, new Promise((_,rej)=>setTimeout(()=>rej(new Error("timed out")), ms))]);
+}
+async function fetchText(u, ms){
+  const res = await withTimeout(fetch(u, {cache:"no-store"}), ms||12000);
+  if(!res.ok) throw new Error("HTTP "+res.status);
+  const text = await res.text();
+  if(!text || text.length < 40) throw new Error("empty response");
+  return text;
 }
 async function proxyFetch(url){
-  let lastErr;
+  const failures = [];
   // Android app: CapacitorHttp makes fetch() native, so no CORS relay is needed
   if(IS_NATIVE){
-    try{
-      const res = await withTimeout(fetch(url, {cache:"no-store"}), 12000);
-      if(!res.ok) throw new Error("HTTP "+res.status);
-      return await res.text();
-    }catch(e){ lastErr = e; }
+    try{ return await fetchText(url); }
+    catch(e){ failures.push("direct: "+(e.message||e)); }
   }
-  for(const build of relayBuilders()){
-    try{
-      const res = await withTimeout(fetch(build(url), {cache:"no-store"}), 12000);
-      if(!res.ok) throw new Error("HTTP "+res.status);
-      return await res.text();
-    }catch(e){ lastErr = e; }
+  for(const r of relayBuilders()){
+    try{ return await fetchText(r.build(url)); }
+    catch(e){ failures.push(r.name+": "+(e.message||"failed")); }
   }
-  throw lastErr || new Error("All relays failed");
+  const err = new Error("All relays failed");
+  err.detail = failures.join(" · ");
+  throw err;
+}
+async function testRelays(){
+  const feed = "https://www.youtube.com/feeds/videos.xml?channel_id=UCBR8-60-B28hp2BmDPdntcQ";
+  const targets = [];
+  if(IS_NATIVE) targets.push({name:"direct", url:feed});
+  relayBuilders().forEach(r=>targets.push({name:r.name, url:r.build(feed)}));
+  const out = [];
+  for(const t of targets){
+    const t0 = performance.now();
+    try{
+      const text = await fetchText(t.url, 10000);
+      if(!/<feed|<entry/.test(text)) throw new Error("not a YouTube feed");
+      out.push("✅ "+t.name+" ("+Math.round(performance.now()-t0)+" ms)");
+    }catch(e){ out.push("❌ "+t.name+": "+(e.message||"failed")); }
+  }
+  return out;
 }
 
 /* ============================================================
    CHANNEL RESOLUTION + REPAIR LOGIC
 ============================================================ */
 function extractChannelIdFromHtml(html){
-  let m = html.match(/"channelId":"(UC[a-zA-Z0-9_-]{22})"/);
-  if(m) return m[1];
-  m = html.match(/<link rel="canonical" href="https:\/\/www\.youtube\.com\/channel\/(UC[a-zA-Z0-9_-]{22})"/);
-  if(m) return m[1];
-  m = html.match(/itemprop="channelId" content="(UC[a-zA-Z0-9_-]{22})"/);
-  if(m) return m[1];
+  const pats = [
+    /<link rel="canonical" href="https:\/\/www\.youtube\.com\/channel\/(UC[\w-]{22})"/,
+    /feeds\/videos\.xml\?channel_id=(UC[\w-]{22})/,
+    /<meta itemprop="(?:channelId|identifier)" content="(UC[\w-]{22})"/,
+    /"externalId":"(UC[\w-]{22})"/,
+    /"browseId":"(UC[\w-]{22})"/,
+    /"channelId":"(UC[\w-]{22})"/
+  ];
+  for(const re of pats){ const m = html.match(re); if(m) return m[1]; }
   return null;
 }
 function extractTitleFromHtml(html){
@@ -736,7 +780,8 @@ async function resolveChannelId(rawInput, {forceRefresh=false}={}){
   try{
     html = await proxyFetch(norm.value);
   }catch(e){
-    throw new Error("Network relay failed — try again in a moment");
+    const hint = customRelayUrl() ? "" : " Set up your own relay in Settings → Network for reliable results.";
+    throw new Error("Could not reach YouTube. " + (e.detail || e.message) + "." + hint);
   }
   let channelId = extractChannelIdFromHtml(html);
   if(!channelId){
@@ -1411,6 +1456,12 @@ document.getElementById('proxySelect').addEventListener('change', (e)=>{
 });
 document.getElementById('customProxyInput').addEventListener('change', (e)=>{
   DB.settings.customProxy = e.target.value.trim(); saveNow(); toast('Relay saved');
+});
+document.getElementById('testRelayBtn').addEventListener('click', async ()=>{
+  const el = document.getElementById('relayTestResult');
+  el.innerHTML = '<span class="spinner" style="display:inline-block;vertical-align:middle;margin-right:6px;"></span>Testing…';
+  const lines = await testRelays();
+  el.innerHTML = lines.map(escapeHtml).join('<br>');
 });
 
 /* ============================================================
