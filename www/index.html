@@ -346,8 +346,7 @@ select{background:rgba(255,255,255,0.05); color:var(--text-1); border:1px solid 
 /* ===== Player page: video on top, notes underneath, composer pinned ===== */
 #page-player{padding:10px 12px 8px; overflow:hidden;}
 #playerHost{flex:0 0 auto; display:flex; flex-direction:column; min-height:0;}
-.pl-bar{display:flex; align-items:center; gap:6px; margin-bottom:8px;}
-.pl-bar-sp{flex:1;}
+.pl-bar{display:flex; align-items:center; gap:8px; margin-bottom:8px; min-height:38px;}
 .pl-btn{height:34px; min-width:34px; padding:0 10px; display:inline-flex; align-items:center; justify-content:center; gap:6px; border-radius:10px; border:1px solid var(--glass-border); background:var(--glass); color:var(--text-2); font-size:15px; font-weight:600;}
 .pl-btn .lbl{font-size:11.5px; display:none;}
 .pl-btn.on{background:var(--cyan-dim); border-color:var(--cyan); color:var(--cyan);}
@@ -355,9 +354,10 @@ select{background:rgba(255,255,255,0.05); color:var(--text-1); border:1px solid 
 .player-slot{position:relative; width:100%; aspect-ratio:16/9; max-height:40dvh; background:#000; border-radius:var(--radius-md); overflow:hidden; flex:0 0 auto;}
 .slot-hint{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--text-3); font-size:12px; text-align:center; padding:12px;}
 .progress-track{height:3px; border-radius:99px; background:rgba(255,255,255,0.08); margin-top:7px; overflow:hidden;}
-.player-title{font-size:14px; font-weight:700; margin:9px 0 1px; line-height:1.35; display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; cursor:pointer;}
+.player-title{font-size:13.5px; font-weight:700; margin:0; line-height:1.35; display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; cursor:pointer;}
 .player-title.open{-webkit-line-clamp:5;}
-.player-channel{font-size:11.5px; color:var(--text-3); margin-bottom:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.pl-meta{flex:1; min-width:0;}
+.player-channel{font-size:11px; color:var(--text-3); margin:1px 0 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 .pl-actions{display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin-bottom:8px;}
 .pl-act{height:40px; border-radius:12px; border:1px solid var(--glass-border); background:var(--glass); color:var(--text-2); font-size:17px; display:flex; align-items:center; justify-content:center; gap:6px; padding:0;}
 .pl-act .lbl{display:none; font-size:11.5px; font-weight:600;}
@@ -370,7 +370,7 @@ select{background:rgba(255,255,255,0.05); color:var(--text-1); border:1px solid 
 .pl-tab .cnt{font-weight:600; opacity:.75; margin-left:4px;}
 .pl-scroll{flex:1 1 auto; min-height:0; overflow-y:auto; padding-bottom:6px; -webkit-overflow-scrolling:touch;}
 .pl-empty{font-size:12px; color:var(--text-3); line-height:1.55; padding:14px 6px; text-align:center;}
-.pl-compose{flex:0 0 auto; padding-top:8px; border-top:1px solid var(--glass-border);}
+.pl-compose{flex:0 0 auto; margin:9px 0 2px;}
 .pl-compose-top{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px;}
 .ts-chip{height:28px; padding:0 10px; border-radius:99px; border:1px solid var(--cyan); background:var(--cyan-dim); color:var(--cyan); font-size:12px; font-weight:700; font-variant-numeric:tabular-nums;}
 .pt-chip{display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--text-2);}
@@ -390,7 +390,7 @@ body.on-player.focus-player #page-player{padding-top:calc(10px + var(--safe-top)
 /* Phone portrait while typing: shrink the video, hide extras so the keyboard has room */
 @media (orientation:portrait) and (max-width:899px){
   #page-player.composing .player-slot{aspect-ratio:auto; height:min(26dvh,150px);}
-  #page-player.composing .pl-meta,#page-player.composing .pl-actions{display:none;}
+  #page-player.composing .pl-actions{display:none;}
 }
 /* Wide screens and landscape: video + info on the left, notes on the right */
 @media (min-width:900px), (orientation:landscape) and (min-width:640px){
@@ -404,6 +404,16 @@ body.on-player.focus-player #page-player{padding-top:calc(10px + var(--safe-top)
   .pl-act .ic{font-size:16px;}
 }
 @media (min-width:900px){ .pl-actions{grid-template-columns:repeat(3,1fr);} .pl-act{height:42px;} }
+/* Short landscape phones: keep the note box under the video without scrolling */
+@media (orientation:landscape) and (max-height:520px){
+  #page-player{padding-top:6px; padding-bottom:4px;}
+  .pl-bar{margin-bottom:4px;}
+  .player-slot{width:min(100%, calc(35dvh * 16 / 9));}
+  .progress-track{margin-top:4px;}
+  .pl-compose{margin:6px 0 0;}
+  .pl-compose-top{display:none;}
+  .pl-actions{margin:6px 0 0;}
+}
 
 body.mini-on .page:not(#page-player){padding-bottom:calc(24px + var(--nav-h) + var(--safe-bottom) + 190px);}
 @media (min-width:900px){ body.mini-on .page:not(#page-player){padding-bottom:calc(40px + 230px);} }
@@ -483,15 +493,24 @@ body.mini-on .page:not(#page-player){padding-bottom:calc(24px + var(--nav-h) + v
     <div id="playerHost">
       <div class="pl-bar">
         <button class="pl-btn" id="btnBack" title="Back" aria-label="Back">←</button>
-        <div class="pl-bar-sp"></div>
+        <div class="pl-meta" id="plMeta">
+          <div class="player-title" id="playerTitle">Select a video to begin</div>
+          <div class="player-channel" id="playerChannel">—</div>
+        </div>
         <button class="pl-btn" id="btnFocus" title="Hide the StudyTube bar" aria-label="Hide the StudyTube bar"><span>⛶</span><span class="lbl">Focus</span></button>
         <button class="pl-btn" id="btnFloat" title="Mini player: keep watching while you browse" aria-label="Mini player"><span>🗗</span><span class="lbl">Mini</span></button>
       </div>
       <div class="player-slot" id="playerSlot"><div class="slot-hint">Pick a video from Home, Videos or your Library to start watching</div></div>
       <div class="progress-track"><div class="progress-fill" id="playerProgressFill" style="width:0%"></div></div>
-      <div class="pl-meta" id="plMeta">
-        <div class="player-title" id="playerTitle">Select a video to begin</div>
-        <div class="player-channel" id="playerChannel">—</div>
+      <div class="pl-compose">
+        <div class="pl-compose-top">
+          <button class="ts-chip" id="noteTsChip" title="This time is attached to your note. Tap to set it to now.">⏱ 0:00</button>
+          <label class="pt-chip"><input type="checkbox" id="pauseTypingChk"> Pause while typing</label>
+        </div>
+        <div class="note-compose">
+          <textarea id="noteInput" rows="1" placeholder="Write a note…"></textarea>
+          <button class="btn primary sm" id="noteAddBtn">Add</button>
+        </div>
       </div>
       <div class="pl-actions" id="plActions">
         <button class="pl-act" id="btnFav" title="Favorite" aria-label="Favorite"><span class="ic">♥</span><span class="lbl">Favorite</span></button>
@@ -511,16 +530,6 @@ body.mini-on .page:not(#page-player){padding-bottom:calc(24px + var(--nav-h) + v
       <div class="pl-scroll">
         <div id="ptab-notes"><div id="noteList"></div></div>
         <div id="ptab-cps" hidden><div id="checkpointList"></div></div>
-      </div>
-      <div class="pl-compose">
-        <div class="pl-compose-top">
-          <button class="ts-chip" id="noteTsChip" title="This time is attached to your note. Tap to set it to now.">⏱ 0:00</button>
-          <label class="pt-chip"><input type="checkbox" id="pauseTypingChk"> Pause while typing</label>
-        </div>
-        <div class="note-compose">
-          <textarea id="noteInput" rows="1" placeholder="Write a note…"></textarea>
-          <button class="btn primary sm" id="noteAddBtn">Add</button>
-        </div>
       </div>
     </div>
   </div>
