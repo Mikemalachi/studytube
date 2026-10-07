@@ -212,6 +212,31 @@ input::placeholder, textarea::placeholder{color:var(--text-3);}
 .empty-state .es{font-size:11.5px; max-width:240px;}
 
 .tabbar{display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; margin-bottom:14px;}
+/* tabs must never be squashed by the lists below them */
+.page > *{flex-shrink:0;}
+.tabbar{flex:0 0 auto;}
+/* handwriting */
+#inkEditor{position:fixed; z-index:28; display:none; flex-direction:column; background:#fffef9; border-radius:var(--radius-md); overflow:hidden; border:1px solid var(--glass-border); box-shadow:0 10px 30px rgba(0,0,0,.45); left:0; top:0; width:0; height:0;}
+#inkEditor.open{display:flex;}
+#inkEditor.full{border-radius:0; border:0;}
+.ink-bar{display:flex; flex-wrap:nowrap; align-items:center; gap:4px; padding:6px 8px; background:#0b1226; flex:0 0 auto; overflow-x:auto; scrollbar-width:none;}
+.ink-bar::-webkit-scrollbar{display:none;}
+.ink-bar > *{flex:0 0 auto;}
+.ink-btn{min-width:34px; height:34px; padding:0 8px; border-radius:9px; border:1px solid var(--glass-border); background:var(--glass); color:var(--text-1); font-size:15px; font-weight:700; touch-action:manipulation;}
+.ink-btn.on{background:var(--cyan); color:#04101F; border-color:transparent;}
+.ink-btn:disabled{opacity:.35;}
+.ink-btn.save{background:linear-gradient(135deg,var(--cyan),var(--blue)); color:#04101F; border-color:transparent; margin-left:auto; position:sticky; right:0;}
+.ink-sw{width:26px; height:26px; min-width:26px; padding:0; border-radius:50%; border:2px solid transparent; background:var(--c);}
+.ink-sw.on{background:var(--c); border-color:#fff; box-shadow:0 0 0 2px var(--cyan);}
+.ink-sz{width:34px; padding:0; display:flex; align-items:center; justify-content:center;}
+.ink-sz i{display:block; border-radius:50%; background:currentColor; width:var(--d); height:var(--d);}
+.ink-sep{width:1px; height:22px; background:var(--glass-border); margin:0 3px;}
+.ink-wrap{flex:1 1 auto; min-height:0; overflow:auto; background:#e8ecf3; padding:8px; -webkit-overflow-scrolling:touch; overscroll-behavior:contain;}
+#inkCanvas{display:block; margin:0 auto; background:#fffef9; box-shadow:0 1px 6px rgba(0,0,0,.25); touch-action:none; -webkit-touch-callout:none; user-select:none; -webkit-user-select:none;}
+.ink-foot{flex:0 0 auto; display:flex; align-items:center; gap:8px; padding:5px 10px; background:#0b1226; font-size:11px; color:var(--text-3);}
+canvas.ink-thumb{display:block; width:100%; background:#fffef9; border-radius:8px; border:1px solid var(--glass-border); margin:4px 0;}
+body.ink-open .composer-hide{display:none;}
+
 .tabbar::-webkit-scrollbar{display:none;}
 .tab-chip{
   flex:0 0 auto; padding:8px 14px; border-radius:999px; font-size:12px; font-weight:600;
@@ -509,6 +534,7 @@ body.mini-on .page:not(#page-player){padding-bottom:calc(24px + var(--nav-h) + v
         </div>
         <div class="note-compose">
           <textarea id="noteInput" rows="1" placeholder="Write a note…"></textarea>
+          <button class="btn sm" id="btnInk" title="Handwrite a note (Apple Pencil)" aria-label="Handwrite">✍️</button>
           <button class="btn primary sm" id="noteAddBtn">Add</button>
         </div>
       </div>
@@ -526,6 +552,7 @@ body.mini-on .page:not(#page-player){padding-bottom:calc(24px + var(--nav-h) + v
       <div class="pl-tabs">
         <button class="pl-tab active" data-ptab="notes">📝 Notes<span class="cnt" id="cntNotes"></span></button>
         <button class="pl-tab" data-ptab="cps">📍 Checkpoints<span class="cnt" id="cntCps"></span></button>
+        <button class="pl-tab" id="btnExportVideo" style="flex:0 0 44px;" title="Export notes of this video" aria-label="Export">⬇️</button>
       </div>
       <div class="pl-scroll">
         <div id="ptab-notes"><div id="noteList"></div></div>
@@ -653,7 +680,8 @@ body.mini-on .page:not(#page-player){padding-bottom:calc(24px + var(--nav-h) + v
         <button class="btn sm" data-exp="json">JSON</button>
         <button class="btn sm" data-exp="md">Markdown</button>
         <button class="btn sm" data-exp="html">HTML</button>
-        <button class="btn sm" data-exp="pdf">Print / PDF</button>
+        <button class="btn sm" data-exp="pdf">PDF (with links)</button>
+        <button class="btn sm" data-exp="png">Image (PNG)</button>
       </div>
     </div>
 
@@ -690,6 +718,58 @@ body.mini-on .page:not(#page-player){padding-bottom:calc(24px + var(--nav-h) + v
 </div>
 
 <!-- ============ SHEETS ============ -->
+<div id="inkEditor" role="dialog" aria-label="Handwriting">
+  <div class="ink-bar">
+    <button class="ink-btn" id="inkCancel" title="Close">✕</button>
+    <button class="ink-btn" id="inkUndo" title="Undo">↶</button>
+    <button class="ink-btn" id="inkRedo" title="Redo">↷</button>
+    <span class="ink-sep"></span>
+    <button class="ink-btn on" data-tool="pen" title="Pen">✏️</button>
+    <button class="ink-btn" data-tool="hl" title="Highlighter">🖍️</button>
+    <button class="ink-btn" data-tool="eraser" title="Eraser">🧽</button>
+    <button class="ink-btn" data-tool="hand" title="Scroll / move">✋</button>
+    <span class="ink-sep"></span>
+    <button class="ink-btn ink-sw on" data-color="#1a1a1a" style="--c:#1a1a1a" aria-label="Black"></button>
+    <button class="ink-btn ink-sw" data-color="#1d4ed8" style="--c:#1d4ed8" aria-label="Blue"></button>
+    <button class="ink-btn ink-sw" data-color="#dc2626" style="--c:#dc2626" aria-label="Red"></button>
+    <button class="ink-btn ink-sw" data-color="#15803d" style="--c:#15803d" aria-label="Green"></button>
+    <button class="ink-btn ink-sw" data-color="#7c3aed" style="--c:#7c3aed" aria-label="Purple"></button>
+    <span class="ink-sep"></span>
+    <button class="ink-btn ink-sz" data-size="2" title="Thin"><i style="--d:3px"></i></button>
+    <button class="ink-btn ink-sz on" data-size="3.5" title="Medium"><i style="--d:6px"></i></button>
+    <button class="ink-btn ink-sz" data-size="7" title="Thick"><i style="--d:10px"></i></button>
+    <span class="ink-sep"></span>
+    <button class="ink-btn" id="inkPaper" title="Paper: lines / grid / plain">▤</button>
+    <button class="ink-btn" id="inkAddPage" title="Add more space">＋</button>
+    <button class="ink-btn" id="inkClear" title="Clear page">🗑</button>
+    <button class="ink-btn" id="inkFinger" title="Fingers can draw">☝️</button>
+    <button class="ink-btn" id="inkFull" title="Full screen (video floats)">⛶</button>
+    <button class="ink-btn save" id="inkSave">Save</button>
+  </div>
+  <div class="ink-wrap" id="inkWrap"><canvas id="inkCanvas"></canvas></div>
+  <div class="ink-foot"><span id="inkTsLabel">⏱ 0:00</span><span>Saved with this time. Two fingers scroll.</span></div>
+</div>
+
+<div class="sheet-backdrop" id="sheetExport">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h3>Export notes</h3>
+    <div class="field-label">Timestamps become links. Tap one to open the video at that moment.</div>
+    <div class="tabbar" id="exportScope" style="margin-bottom:12px;">
+      <button class="tab-chip active" data-scope="all">All videos</button>
+      <button class="tab-chip" data-scope="video" id="exportScopeVideo">This video</button>
+    </div>
+    <div class="grid-2">
+      <button class="btn primary" data-fmt="pdf">📄 PDF</button>
+      <button class="btn primary" data-fmt="png">🖼️ Image</button>
+      <button class="btn" data-fmt="md">Markdown</button>
+      <button class="btn" data-fmt="html">HTML</button>
+      <button class="btn" data-fmt="json" style="grid-column:1/-1;">JSON backup</button>
+    </div>
+    <div id="exportStatus" style="font-size:12px; color:var(--text-3); margin-top:10px; min-height:16px;"></div>
+  </div>
+</div>
+
 <div class="sheet-backdrop" id="sheetAddChannel">
   <div class="sheet">
     <div class="sheet-handle"></div>
@@ -1460,9 +1540,11 @@ function renderNotes(){
   el.innerHTML = notes.slice().reverse().map(n=>`
     <div class="note-item" data-nid="${n.id}">
       <div class="n-head"><span class="n-ts" data-jump="${n.ts}">${fmtSecs(n.ts)}</span><span style="font-size:10px;color:var(--text-3);">${timeAgo(n.createdAt)}</span></div>
-      <div class="n-text">${escapeHtml(n.text)}</div>
-      <div class="n-actions"><span data-pin="${n.id}">${n.pinned?'★ Pinned':'☆ Pin'}</span><span data-del="${n.id}">Delete</span></div>
+      ${noteBodyHtml(currentVideoId,n)}
+      <div class="n-actions"><span data-pin="${n.id}">${n.pinned?'★ Pinned':'☆ Pin'}</span>${n.ink?`<span data-inkedit="${n.id}">✍️ Edit</span>`:''}<span data-del="${n.id}">Delete</span></div>
     </div>`).join('');
+  paintInkThumbs(el);
+  el.querySelectorAll('[data-inkedit]').forEach(b=>b.addEventListener('click', ()=>openInk(b.dataset.inkedit)));
   el.querySelectorAll('[data-jump]').forEach(b=>b.addEventListener('click', ()=>{ if(ytPlayer && ytPlayer.seekTo) ytPlayer.seekTo(parseFloat(b.dataset.jump), true); }));
   el.querySelectorAll('[data-pin]').forEach(b=>b.addEventListener('click', ()=>{
     const n = DB.notes[currentVideoId].find(x=>x.id===b.dataset.pin);
@@ -1517,7 +1599,8 @@ document.querySelectorAll('#libTabs .tab-chip').forEach(chip=>{
     renderLibrary();
   });
 });
-function renderLibrary(){
+function renderLibrary(){ renderLibraryInner(); paintInkThumbs(document.getElementById('libraryContent')); }
+function renderLibraryInner(){
   const el = document.getElementById('libraryContent');
   let ids = [];
   if(libTab==='history') ids = DB.history;
@@ -1552,7 +1635,7 @@ function renderLibrary(){
       const notes = DB.notes[vid];
       return `<div class="card" style="margin-bottom:12px;">
         <div class="row-between" style="margin-bottom:8px;"><div class="t" style="font-size:12.5px;font-weight:700;">${escapeHtml(v.title)}</div><span class="badge">${notes.length}</span></div>
-        ${notes.map(n=>`<div class="note-item" style="margin-bottom:6px;"><div class="n-head"><span class="n-ts">${fmtSecs(n.ts)}</span></div><div class="n-text">${escapeHtml(n.text)}</div></div>`).join('')}
+        ${notes.map(n=>`<div class="note-item" style="margin-bottom:6px;"><div class="n-head"><span class="n-ts">${fmtSecs(n.ts)}</span></div>${noteBodyHtml(vid,n)}</div>`).join('')}
         <button class="btn sm block" style="margin-top:6px;" data-open="${vid}">Open video</button>
       </div>`;
     }).join('');
@@ -1571,7 +1654,7 @@ function renderLibrary(){
       const v = DB.videos[vid];
       const pinned = DB.notes[vid].filter(n=>n.pinned);
       return `<div class="card" style="margin-bottom:12px;"><div class="t" style="font-size:12.5px;font-weight:700;margin-bottom:8px;">${escapeHtml(v.title)}</div>` +
-        pinned.map(n=>`<div class="note-item"><div class="n-head"><span class="n-ts">${fmtSecs(n.ts)}</span></div><div class="n-text">${escapeHtml(n.text)}</div></div>`).join('') +
+        pinned.map(n=>`<div class="note-item"><div class="n-head"><span class="n-ts">${fmtSecs(n.ts)}</span></div>${noteBodyHtml(vid,n)}</div>`).join('') +
         `<button class="btn sm block" style="margin-top:6px;" data-open="${vid}">Open video</button></div>`;
     }).join('');
     el.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click', ()=>openPlayer(b.dataset.open)));
@@ -1606,49 +1689,6 @@ document.getElementById('libClearAllBtn').addEventListener('click', ()=>{
   DB.history=[]; DB.historyAt={}; DB.favorites=[]; DB.watchLater=[]; DB.completed=[]; DB.notes={}; DB.checkpoints={}; DB.categories={}; DB.resume={};
   saveNow(); renderLibrary(); renderHome(); toast('Library erased');
 });
-document.getElementById('libExportBtn').addEventListener('click', ()=>exportNotes('md'));
-
-function collectNotesExport(){
-  return Object.keys(DB.notes).filter(vid=>DB.notes[vid].length>0 && DB.videos[vid]).map(vid=>({
-    video: DB.videos[vid], notes: DB.notes[vid]
-  }));
-}
-function exportNotes(format){
-  if(format==='pdf' && IS_NATIVE) format = 'html';
-  const data = collectNotesExport();
-  if(data.length===0){ toast('No notes to export'); return; }
-  if(format==='json'){
-    downloadBlob('studytube-notes.json', JSON.stringify(data,null,2), 'application/json');
-  } else if(format==='md'){
-    let md = '# StudyTube Notes\n\n';
-    data.forEach(d=>{
-      md += `## ${d.video.title}\n${d.video.channelTitle||''}\n\n`;
-      d.notes.forEach(n=>{ md += `- **[${fmtSecs(n.ts)}]** ${n.text}\n`; });
-      md += '\n';
-    });
-    downloadBlob('studytube-notes.md', md, 'text/markdown');
-  } else if(format==='html'){
-    let html = '<html><head><meta charset="utf-8"><title>StudyTube Notes</title><style>body{font-family:sans-serif;max-width:720px;margin:40px auto;padding:0 20px;} h2{margin-top:32px;} .n{margin:10px 0;padding:10px;border-left:3px solid #22D3EE;background:#f4f8fb;} .ts{color:#0891b2;font-weight:700;margin-right:8px;}</style></head><body><h1>StudyTube Notes</h1>';
-    data.forEach(d=>{
-      html += `<h2>${escapeHtml(d.video.title)}</h2><p>${escapeHtml(d.video.channelTitle||'')}</p>`;
-      d.notes.forEach(n=>{ html += `<div class="n"><span class="ts">[${fmtSecs(n.ts)}]</span>${escapeHtml(n.text)}</div>`; });
-    });
-    html += '</body></html>';
-    downloadBlob('studytube-notes.html', html, 'text/html');
-  } else if(format==='pdf'){
-    const w = window.open('', '_blank');
-    let html = '<html><head><meta charset="utf-8"><title>StudyTube Notes</title><style>body{font-family:sans-serif;max-width:720px;margin:20px auto;} h2{margin-top:28px;} .n{margin:8px 0;padding-left:10px;border-left:3px solid #22D3EE;} .ts{color:#0891b2;font-weight:700;margin-right:6px;}</style></head><body><h1>StudyTube Notes</h1>';
-    data.forEach(d=>{
-      html += `<h2>${escapeHtml(d.video.title)}</h2>`;
-      d.notes.forEach(n=>{ html += `<div class="n"><span class="ts">[${fmtSecs(n.ts)}]</span>${escapeHtml(n.text)}</div>`; });
-    });
-    html += '</body></html>';
-    w.document.write(html); w.document.close();
-    setTimeout(()=>w.print(), 400);
-  }
-  toast('Exported');
-}
-document.querySelectorAll('[data-exp]').forEach(b=>b.addEventListener('click', ()=>exportNotes(b.dataset.exp)));
 
 /* ============================================================
    CHANNELS PAGE
@@ -2037,7 +2077,7 @@ function syncFlatten(){
   const add = (k,v,vid,idx)=>{ f[k] = v; if(vid) refs.add(vid); if(idx !== undefined) hint[k] = idx; };
   for(const [vid,arr] of Object.entries(DB.notes)){
     if(!VID_RE.test(vid) || !Array.isArray(arr)) continue;
-    for(const n of arr) if(n && typeof n.id === "string") add("n|"+vid+"|"+n.id, {text:n.text, ts:n.ts, pinned:!!n.pinned, createdAt:n.createdAt}, vid);
+    for(const n of arr) if(n && typeof n.id === "string") add("n|"+vid+"|"+n.id, {text:n.text, ts:n.ts, pinned:!!n.pinned, createdAt:n.createdAt, ink:n.ink || undefined}, vid);
   }
   for(const [vid,arr] of Object.entries(DB.checkpoints)){
     if(!VID_RE.test(vid) || !Array.isArray(arr)) continue;
@@ -2114,7 +2154,7 @@ function syncApply(map){
     if(!e || e.d || typeof k !== "string" || k.length > 400) continue;
     const parts = k.split("|"), c = parts[0], v = e.v;
     if(c === "n" && parts.length === 3 && VID_RE.test(parts[1]) && /^[\w-]{1,40}$/.test(parts[2]) && v && typeof v === "object"){
-      (notes[parts[1]] = notes[parts[1]] || []).push({id:parts[2], text:clampStr(v.text,500000), ts:Number.isFinite(v.ts)?v.ts:0, pinned:!!v.pinned, createdAt:clampStr(v.createdAt,40)});
+      (notes[parts[1]] = notes[parts[1]] || []).push({id:parts[2], text:clampStr(v.text,500000), ts:Number.isFinite(v.ts)?v.ts:0, pinned:!!v.pinned, createdAt:clampStr(v.createdAt,40), ...(sanitizeInk(v.ink) ? {ink:sanitizeInk(v.ink)} : {})});
     }else if(c === "c" && parts.length === 3 && VID_RE.test(parts[1]) && /^[\w-]{1,40}$/.test(parts[2]) && v && Number.isFinite(v.seconds)){
       (cps[parts[1]] = cps[parts[1]] || []).push({id:parts[2], label:clampStr(v.label,60), seconds:Math.max(0,v.seconds)});
     }else if((c === "f" || c === "w" || c === "d") && parts.length === 2 && VID_RE.test(parts[1])){
@@ -2417,7 +2457,7 @@ function layoutDock(){
 }
 function updateDockMode(){
   if(!currentVideoId || dockClosed){ dockEl.classList.remove('show', 'mini'); document.body.classList.remove('mini-on'); return; }
-  if(onPlayerPage()){ dockEl.classList.add('show'); dockEl.classList.remove('mini'); }
+  if(onPlayerPage()){ dockEl.classList.add('show'); dockEl.classList.toggle('mini', !!(inkSt && inkSt.full)); }
   else if(miniEnabled()){ dockEl.classList.add('show', 'mini'); }
   else dockEl.classList.remove('show', 'mini');
   document.getElementById('miniPlay').style.display = (basicMode || !ytPlayer) ? 'none' : '';
@@ -2427,7 +2467,7 @@ function updateDockMode(){
 function playerPageChanged(pageId, leaving){
   const onP = pageId === 'page-player';
   document.body.classList.toggle('on-player', onP);
-  if(!onP) lastNonPlayerPage = pageId;
+  if(!onP){ lastNonPlayerPage = pageId; if(inkSt) inkClose(true); }
   if(onP && dockClosed && currentVideoId){
     dockClosed = false;
     if(basicMode) loadVideoInPlayer(currentVideoId, ((DB.resume[currentVideoId] || {}).seconds) || 0);
@@ -2517,10 +2557,11 @@ document.getElementById('limitSelect').addEventListener('change', (e)=>{
 });
 
 /* notes / checkpoints tabs */
-document.querySelectorAll('.pl-tab').forEach(t=>t.addEventListener('click', ()=>{
-  document.querySelectorAll('.pl-tab').forEach(x=>x.classList.toggle('active', x === t));
+document.querySelectorAll('.pl-tab[data-ptab]').forEach(t=>t.addEventListener('click', ()=>{
+  document.querySelectorAll('.pl-tab[data-ptab]').forEach(x=>x.classList.toggle('active', x === t));
   document.getElementById('ptab-notes').hidden = t.dataset.ptab !== 'notes';
   document.getElementById('ptab-cps').hidden = t.dataset.ptab !== 'cps';
+  if(t.dataset.ptab === 'notes') paintInkThumbs(document.getElementById('noteList'));
 }));
 function updatePlayerCounts(){
   const n = ((currentVideoId && DB.notes[currentVideoId]) || []).length, c = ((currentVideoId && DB.checkpoints[currentVideoId]) || []).length;
@@ -2552,6 +2593,605 @@ noteInputEl.addEventListener('blur', ()=>{
 document.getElementById('noteAddBtn').addEventListener('mousedown', (e)=>e.preventDefault());
 
 function initPlayerUi(){ syncSettingControls(); applyFocus(); refreshTsChip(); updatePlayerCounts(); }
+
+/* ============================================================
+   HANDWRITING (Apple Pencil / finger / mouse). Notes keep vector strokes, so they stay sharp,
+   sync as small JSON and export crisply. Coordinates live in a fixed 1000-unit-wide page.
+============================================================ */
+const INK_W = 1000;
+const INK_COLORS = ['#1a1a1a', '#1d4ed8', '#dc2626', '#15803d', '#7c3aed'];
+const INK_HL = ['#facc15', '#4ade80', '#38bdf8', '#f472b6', '#fb923c'];
+const INK_BGS = ['lined', 'grid', 'plain'];
+let inkSt = null;
+const inkEl = document.getElementById('inkEditor'), inkWrap = document.getElementById('inkWrap'), inkCanvas = document.getElementById('inkCanvas');
+const inkTouches = new Map();
+
+function newInk(){ return {w:INK_W, h:1100, bg:'lined', strokes:[]}; }
+
+/* Validate ink that came from the cloud or a backup. Returns a clean copy (same key order as the editor) or null. */
+function sanitizeInk(ink){
+  if(!ink || typeof ink !== 'object' || !Array.isArray(ink.strokes)) return null;
+  const h = Math.min(12000, Math.max(300, Math.round(Number(ink.h)) || 1100));
+  const bg = INK_BGS.includes(ink.bg) ? ink.bg : 'lined';
+  const strokes = []; let total = 0;
+  for(const st of ink.strokes.slice(0, 4000)){
+    if(!st || !Array.isArray(st.p) || st.p.length < 2 || st.p.length % 2) continue;
+    if(st.p.length > 8000 || (total += st.p.length) > 400000) break;
+    const p = [];
+    for(let i = 0; i < st.p.length; i++){
+      const n = Number(st.p[i]);
+      if(!Number.isFinite(n)) { p.length = 0; break; }
+      p.push(Math.min(h + 100, Math.max(-50, n)));
+    }
+    if(!p.length) continue;
+    strokes.push({k: st.k === 'h' ? 'h' : 'p', c: /^#[0-9a-fA-F]{6}$/.test(st.c) ? st.c : '#1a1a1a', s: Math.min(40, Math.max(0.5, Number(st.s) || 3)), p});
+  }
+  return {w:INK_W, h, bg, strokes};
+}
+
+/* ---- drawing ---- */
+function drawStroke(ctx, st, scale, yOff){
+  const p = st.p; if(p.length < 2) return;
+  ctx.save();
+  ctx.lineCap = st.k === 'h' ? 'butt' : 'round'; ctx.lineJoin = 'round';
+  if(st.k === 'h'){ ctx.globalAlpha = 0.38; ctx.globalCompositeOperation = 'multiply'; }
+  ctx.strokeStyle = st.c; ctx.lineWidth = st.s * (st.k === 'h' ? 4 : 1) * scale;
+  ctx.beginPath(); ctx.moveTo(p[0] * scale, (p[1] - yOff) * scale);
+  if(p.length === 2){ ctx.lineTo(p[0] * scale + 0.01, (p[1] - yOff) * scale); }
+  else{
+    for(let i = 2; i < p.length - 2; i += 2){
+      const mx = (p[i] + p[i+2]) / 2, my = (p[i+1] + p[i+3]) / 2;
+      ctx.quadraticCurveTo(p[i] * scale, (p[i+1] - yOff) * scale, mx * scale, (my - yOff) * scale);
+    }
+    ctx.lineTo(p[p.length-2] * scale, (p[p.length-1] - yOff) * scale);
+  }
+  ctx.stroke(); ctx.restore();
+}
+function renderInk(ctx, ink, scale, y0, y1){
+  y0 = y0 || 0; if(y1 === undefined) y1 = ink.h;
+  ctx.fillStyle = '#fffef9'; ctx.fillRect(0, 0, ink.w * scale, (y1 - y0) * scale);
+  if(ink.bg !== 'plain'){
+    ctx.strokeStyle = ink.bg === 'grid' ? '#dfe7f2' : '#d6e0ee'; ctx.lineWidth = Math.max(1, scale * 1.2);
+    const step = ink.bg === 'grid' ? 40 : 56;
+    ctx.beginPath();
+    for(let y = Math.ceil(y0 / step) * step; y < y1; y += step){ ctx.moveTo(0, (y - y0) * scale); ctx.lineTo(ink.w * scale, (y - y0) * scale); }
+    if(ink.bg === 'grid') for(let x = step; x < ink.w; x += step){ ctx.moveTo(x * scale, 0); ctx.lineTo(x * scale, (y1 - y0) * scale); }
+    ctx.stroke();
+  }
+  ink.strokes.forEach(st=>drawStroke(ctx, st, scale, y0));
+}
+function inkBounds(ink){
+  let y0 = Infinity, y1 = -Infinity;
+  ink.strokes.forEach(st=>{ const r = st.s * (st.k === 'h' ? 2 : 1) + 4; for(let i = 1; i < st.p.length; i += 2){ y0 = Math.min(y0, st.p[i] - r); y1 = Math.max(y1, st.p[i] + r); } });
+  if(!Number.isFinite(y0)) return {y0:0, y1:200};
+  return {y0:Math.max(0, Math.floor(y0 - 30)), y1:Math.min(ink.h, Math.ceil(y1 + 30))};
+}
+function inkToCanvas(ink, widthPx, crop){
+  const b = crop === false ? {y0:0, y1:ink.h} : inkBounds(ink), scale = widthPx / ink.w;
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(widthPx)); c.height = Math.max(1, Math.round((b.y1 - b.y0) * scale));
+  renderInk(c.getContext('2d'), ink, scale, b.y0, b.y1);
+  return c;
+}
+
+/* ---- note thumbnails (in the note list and the library) ---- */
+function noteBodyHtml(vid, n){
+  let h = '';
+  if(n.ink) h += '<canvas class="ink-thumb" data-ink="' + vid + '|' + n.id + '"></canvas>';
+  if(n.text) h += '<div class="n-text">' + escapeHtml(n.text) + '</div>';
+  return h || '<div class="n-text">(empty)</div>';
+}
+function paintInkThumbs(root){
+  if(!root) return;
+  root.querySelectorAll('canvas.ink-thumb').forEach(cv=>{
+    const [vid, nid] = (cv.dataset.ink || '').split('|');
+    const n = ((DB.notes[vid]) || []).find(x=>x.id === nid);
+    const w = cv.clientWidth;
+    if(!n || !n.ink || !w) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1), src = inkToCanvas(n.ink, Math.round(w * dpr));
+    cv.width = src.width; cv.height = src.height; cv.style.height = (src.height / dpr) + 'px';
+    cv.getContext('2d').drawImage(src, 0, 0);
+  });
+}
+
+/* ---- the editor ---- */
+function layoutInk(){
+  if(!inkSt) return;
+  const W = window.innerWidth, H = window.innerHeight, s = inkEl.style;
+  let x, y, w, h;
+  if(inkSt.full){ x = 0; y = 0; w = W; h = H; }
+  else if(window.matchMedia('(min-width:900px), (orientation:landscape) and (min-width:640px)').matches){
+    const r = document.querySelector('#page-player .player-side').getBoundingClientRect();
+    x = r.left; y = r.top; w = r.width; h = r.height;
+  }else{
+    const d = dockEl.getBoundingClientRect();
+    x = 12; y = d.bottom + 8; w = W - 24;
+    let bottom = H - 8;
+    if(shown('.bottom-nav')) bottom = Math.min(bottom, document.querySelector('.bottom-nav').getBoundingClientRect().top - 6);
+    h = bottom - y;
+  }
+  h = Math.max(h, 220);
+  const set = (k, v)=>{ const t = Math.round(v) + 'px'; if(s[k] !== t) s[k] = t; };
+  set('left', x); set('top', y); set('width', w); set('height', h);
+  inkEl.classList.toggle('full', !!inkSt.full);
+  if(inkSt.lastW !== Math.round(inkWrap.clientWidth)) inkResize();
+}
+function inkResize(){
+  if(!inkSt) return;
+  const cssW = Math.max(200, Math.min(1100, inkWrap.clientWidth - 16));
+  inkSt.lastW = Math.round(inkWrap.clientWidth);
+  inkSt.scale = cssW / INK_W;
+  const cssH = inkSt.ink.h * inkSt.scale;
+  let dpr = Math.min(2, window.devicePixelRatio || 1);
+  while(cssW * dpr * cssH * dpr > 12e6 && dpr > 1) dpr -= 0.25;
+  inkSt.dpr = dpr;
+  inkCanvas.style.width = cssW + 'px'; inkCanvas.style.height = cssH + 'px';
+  inkCanvas.width = Math.round(cssW * dpr); inkCanvas.height = Math.round(cssH * dpr);
+  inkRedraw();
+}
+function inkRedraw(live){
+  if(!inkSt) return;
+  const ctx = inkCanvas.getContext('2d'), sc = inkSt.scale * inkSt.dpr;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  renderInk(ctx, inkSt.ink, sc, 0, inkSt.ink.h);
+  if(live) drawStroke(ctx, live, sc, 0);
+}
+function updateInkUi(){
+  if(!inkSt) return;
+  inkEl.querySelectorAll('[data-tool]').forEach(b=>b.classList.toggle('on', b.dataset.tool === inkSt.tool));
+  inkEl.querySelectorAll('[data-color]').forEach(b=>b.classList.toggle('on', b.dataset.color === INK_COLORS[inkSt.ci]));
+  inkEl.querySelectorAll('[data-size]').forEach(b=>b.classList.toggle('on', parseFloat(b.dataset.size) === inkSt.size));
+  document.getElementById('inkUndo').disabled = !inkSt.undo.length;
+  document.getElementById('inkRedo').disabled = !inkSt.redo.length;
+  document.getElementById('inkFinger').classList.toggle('on', inkSt.finger);
+  document.getElementById('inkFinger').title = inkSt.finger ? 'Finger drawing is on (tap to use Pencil only)' : 'Pencil only (tap to let fingers draw)';
+  document.getElementById('inkFull').classList.toggle('on', !!inkSt.full);
+  inkCanvas.style.touchAction = inkSt.tool === 'hand' ? 'auto' : 'none';
+  document.getElementById('inkTsLabel').textContent = '⏱ ' + fmtSecs(inkSt.ts);
+}
+function openInk(noteId){
+  if(!currentVideoId){ toast('Open a video first'); return; }
+  let ink = null, ts = pendingNoteTs !== null ? pendingNoteTs : curTime();
+  if(noteId){
+    const n = (DB.notes[currentVideoId] || []).find(x=>x.id === noteId);
+    if(!n || !n.ink) return;
+    ink = JSON.parse(JSON.stringify(n.ink)); ts = n.ts;
+  }else ink = newInk();
+  const hasPen = inkSt ? inkSt.penSeen : false;
+  inkSt = {videoId:currentVideoId, noteId:noteId || null, ink, ts, tool:'pen', ci:0, size:3.5, undo:[], redo:[], full:false, cur:null, penSeen:hasPen, finger:!hasPen, scale:1, dpr:1, lastW:0, dirty:false};
+  if(!noteId) inkSt.ink.h = 1100;
+  inkEl.classList.add('open'); document.body.classList.add('ink-open');
+  if(DB.settings.pauseTyping){ try{ if(ytPlayer && playerReady && ytPlayer.getPlayerState && ytPlayer.getPlayerState() === 1){ ytPlayer.pauseVideo(); pausedByTyping = true; } }catch(e){} }
+  try{ if(document.activeElement && document.activeElement.blur) document.activeElement.blur(); }catch(e){}
+  updateDockMode(); layoutInk(); inkResize(); updateInkUi();
+  setTimeout(layoutInk, 120); setTimeout(layoutInk, 320);
+  inkWrap.scrollTop = 0;
+}
+function inkClose(autosave){
+  if(!inkSt) return;
+  if(autosave && inkSt.ink.strokes.length) inkSave(true);
+  inkSt = null; inkTouches.clear();
+  inkEl.classList.remove('open', 'full'); document.body.classList.remove('ink-open');
+  if(pausedByTyping){ pausedByTyping = false; try{ ytPlayer.playVideo(); }catch(e){} }
+  updateDockMode();
+}
+function inkSave(quiet){
+  if(!inkSt) return;
+  const ink = inkSt.ink;
+  if(!ink.strokes.length){ if(!quiet) toast('Nothing drawn yet'); return; }
+  const b = inkBounds(ink);
+  ink.h = Math.min(ink.h, Math.max(400, Math.ceil(b.y1 + 160)));
+  const vid = inkSt.videoId;
+  if(!DB.notes[vid]) DB.notes[vid] = [];
+  if(inkSt.noteId){
+    const n = DB.notes[vid].find(x=>x.id === inkSt.noteId);
+    if(n) n.ink = sanitizeInk(ink);
+  }else{
+    const ta = document.getElementById('noteInput'), caption = ta.value.trim();
+    DB.notes[vid].push({id:uid(), text:caption, ts:inkSt.ts, pinned:false, createdAt:new Date().toISOString(), ink:sanitizeInk(ink)});
+    if(caption){ ta.value = ''; ta.style.height = ''; }
+    pendingNoteTs = null; refreshTsChip();
+  }
+  saveNow();
+  if(currentVideoId === vid) renderNotes();
+  if(!quiet){ toast('Handwritten note saved'); inkClose(false); }
+}
+
+/* pointer handling */
+function inkPt(e){
+  const r = inkCanvas.getBoundingClientRect();
+  return [Math.round((e.clientX - r.left) / inkSt.scale * 2) / 2, Math.round((e.clientY - r.top) / inkSt.scale * 2) / 2];
+}
+function distSeg(px, py, ax, ay, bx, by){
+  const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+  let t = l2 ? ((px - ax) * dx + (py - ay) * dy) / l2 : 0; t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
+function eraseAt(x, y){
+  const r = 16, before = inkSt.ink.strokes.length;
+  inkSt.ink.strokes = inkSt.ink.strokes.filter(st=>{
+    const p = st.p, reach = r + (st.k === 'h' ? st.s * 2 : st.s / 2);
+    if(p.length === 2) return Math.hypot(p[0] - x, p[1] - y) > reach;
+    for(let i = 0; i < p.length - 2; i += 2) if(distSeg(x, y, p[i], p[i+1], p[i+2], p[i+3]) <= reach) return false;
+    return true;
+  });
+  return inkSt.ink.strokes.length !== before;
+}
+function inkPushUndo(){ inkSt.undo.push(inkSt.ink.strokes.slice()); if(inkSt.undo.length > 60) inkSt.undo.shift(); inkSt.redo = []; }
+inkCanvas.addEventListener('pointerdown', (e)=>{
+  if(!inkSt) return;
+  if(e.pointerType === 'pen' && !inkSt.penSeen){ inkSt.penSeen = true; inkSt.finger = false; updateInkUi(); }
+  if(e.pointerType === 'touch'){
+    inkTouches.set(e.pointerId, {y:e.clientY});
+    if(inkSt.tool === 'hand') return;
+    if(!inkSt.finger || inkTouches.size > 1){ if(inkSt.cur){ inkSt.cur = null; inkRedraw(); } e.preventDefault(); return; }
+  }
+  if(inkSt.tool === 'hand' || inkSt.cur) return;
+  e.preventDefault();
+  try{ inkCanvas.setPointerCapture(e.pointerId); }catch(err){}
+  const [x, y] = inkPt(e);
+  inkSt.pid = e.pointerId;
+  if(inkSt.tool === 'eraser'){
+    inkPushUndo(); inkSt.cur = {k:'e', p:[x, y]};
+    if(eraseAt(x, y)){ inkSt.dirty = true; inkRedraw(); }
+    updateInkUi(); return;
+  }
+  const hl = inkSt.tool === 'hl';
+  inkSt.cur = {k:hl ? 'h' : 'p', c:hl ? INK_HL[inkSt.ci] : INK_COLORS[inkSt.ci], s:inkSt.size, p:[x, y]};
+});
+inkCanvas.addEventListener('pointermove', (e)=>{
+  if(!inkSt) return;
+  if(e.pointerType === 'touch'){
+    const t = inkTouches.get(e.pointerId);
+    if(t){
+      const dy = e.clientY - t.y; t.y = e.clientY;
+      if(inkTouches.size > 1 && inkSt.tool !== 'hand') inkWrap.scrollTop -= dy / inkTouches.size;
+    }
+  }
+  const cur = inkSt.cur;
+  if(!cur || e.pointerId !== inkSt.pid) return;
+  e.preventDefault();
+  const evs = (e.getCoalescedEvents && e.getCoalescedEvents().length) ? e.getCoalescedEvents() : [e];
+  const ctx = inkCanvas.getContext('2d'), sc = inkSt.scale * inkSt.dpr;
+  for(const ev of evs){
+    const [x, y] = inkPt(ev);
+    if(cur.k === 'e'){ if(eraseAt(x, y)){ inkSt.dirty = true; inkRedraw(); } continue; }
+    const n = cur.p.length, lx = cur.p[n-2], ly = cur.p[n-1];
+    if(Math.hypot(x - lx, y - ly) < 1.2) continue;
+    cur.p.push(x, y);
+    if(cur.k === 'p'){   // draw the new piece straight onto the canvas
+      ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = cur.c; ctx.lineWidth = cur.s * sc;
+      ctx.beginPath(); ctx.moveTo(lx * sc, ly * sc); ctx.lineTo(x * sc, y * sc); ctx.stroke(); ctx.restore();
+    }
+  }
+  if(cur.k === 'h') inkRedraw(cur);
+});
+function inkPointerEnd(e){
+  if(!inkSt) return;
+  if(e.pointerType === 'touch') inkTouches.delete(e.pointerId);
+  const cur = inkSt.cur;
+  if(!cur || e.pointerId !== inkSt.pid) return;
+  inkSt.cur = null;
+  if(cur.k === 'e'){ updateInkUi(); return; }
+  if(cur.p.length >= 2){
+    inkPushUndo(); inkSt.ink.strokes.push(cur); inkSt.dirty = true;
+    // let long writing grow the page automatically
+    const maxY = Math.max.apply(null, cur.p.filter((_, i)=>i % 2));
+    if(maxY > inkSt.ink.h - 160 && inkSt.ink.h < 8000){ inkSt.ink.h += 600; inkResize(); } else inkRedraw();
+  }
+  updateInkUi();
+}
+inkCanvas.addEventListener('pointerup', inkPointerEnd);
+inkCanvas.addEventListener('pointercancel', (e)=>{ if(inkSt && inkSt.cur && e.pointerId === inkSt.pid){ inkSt.cur = null; inkRedraw(); } if(e.pointerType === 'touch') inkTouches.delete(e.pointerId); });
+inkCanvas.addEventListener('contextmenu', (e)=>e.preventDefault());
+
+/* toolbar */
+inkEl.querySelectorAll('[data-tool]').forEach(b=>b.addEventListener('click', ()=>{ if(inkSt){ inkSt.tool = b.dataset.tool; updateInkUi(); } }));
+inkEl.querySelectorAll('[data-color]').forEach(b=>b.addEventListener('click', ()=>{
+  if(!inkSt) return;
+  inkSt.ci = INK_COLORS.indexOf(b.dataset.color);
+  if(inkSt.tool === 'eraser' || inkSt.tool === 'hand') inkSt.tool = 'pen';
+  updateInkUi();
+}));
+inkEl.querySelectorAll('[data-size]').forEach(b=>b.addEventListener('click', ()=>{ if(inkSt){ inkSt.size = parseFloat(b.dataset.size); updateInkUi(); } }));
+document.getElementById('inkUndo').addEventListener('click', ()=>{ if(inkSt && inkSt.undo.length){ inkSt.redo.push(inkSt.ink.strokes); inkSt.ink.strokes = inkSt.undo.pop(); inkRedraw(); updateInkUi(); } });
+document.getElementById('inkRedo').addEventListener('click', ()=>{ if(inkSt && inkSt.redo.length){ inkSt.undo.push(inkSt.ink.strokes); inkSt.ink.strokes = inkSt.redo.pop(); inkRedraw(); updateInkUi(); } });
+document.getElementById('inkPaper').addEventListener('click', ()=>{ if(inkSt){ inkSt.ink.bg = INK_BGS[(INK_BGS.indexOf(inkSt.ink.bg) + 1) % INK_BGS.length]; inkRedraw(); toast('Paper: ' + inkSt.ink.bg); } });
+document.getElementById('inkAddPage').addEventListener('click', ()=>{ if(inkSt && inkSt.ink.h < 8000){ inkSt.ink.h += 800; inkResize(); inkWrap.scrollTop = inkWrap.scrollHeight; } });
+document.getElementById('inkClear').addEventListener('click', ()=>{ if(inkSt && inkSt.ink.strokes.length && confirm('Clear everything on this page?')){ inkPushUndo(); inkSt.ink.strokes = []; inkRedraw(); updateInkUi(); } });
+document.getElementById('inkFull').addEventListener('click', ()=>{ if(inkSt){ inkSt.full = !inkSt.full; layoutInk(); updateInkUi(); updateDockMode(); } });
+document.getElementById('inkFinger').addEventListener('click', ()=>{ if(inkSt){ inkSt.finger = !inkSt.finger; updateInkUi(); toast(inkSt.finger ? 'Fingers can draw' : 'Pencil only. Two fingers scroll.'); } });
+document.getElementById('inkSave').addEventListener('click', ()=>inkSave(false));
+document.getElementById('inkCancel').addEventListener('click', ()=>{
+  if(!inkSt) return;
+  if(inkSt.dirty && inkSt.ink.strokes.length && !confirm('Discard this drawing?')) return;
+  inkClose(false);
+});
+document.getElementById('btnInk').addEventListener('click', ()=>openInk(null));
+window.addEventListener('resize', ()=>{ if(inkSt) layoutInk(); });
+setInterval(()=>{ if(inkSt && !inkSt.full) layoutInk(); }, 500);
+window.addEventListener('keydown', (e)=>{
+  if(!inkSt) return;
+  if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z'){ e.preventDefault(); document.getElementById(e.shiftKey ? 'inkRedo' : 'inkUndo').click(); }
+});
+
+/* ============================================================
+   EXPORT: PDF, image (PNG), Markdown, HTML, JSON. Timestamps are links that open the video at that moment.
+   Pages are drawn on a canvas, so any script (Amharic, Arabic...) and handwriting come out exactly as you see them.
+============================================================ */
+const EXPORT_FONT = '-apple-system, "Segoe UI", Roboto, "Noto Sans", "Noto Sans Ethiopic", "Noto Sans Arabic", "Nyala", "Kefa", sans-serif';
+function ytLink(vid, secs){ return 'https://youtu.be/' + vid + '?t=' + Math.max(0, Math.floor(secs || 0)); }
+function videoLink(vid){ return 'https://www.youtube.com/watch?v=' + vid; }
+function shortLink(url){ return url.replace(/^https?:\/\//, ''); }
+
+function collectExport(scope){
+  const ids = new Set([...Object.keys(DB.notes), ...Object.keys(DB.checkpoints)]);
+  const out = [];
+  ids.forEach(vid=>{
+    if(!DB.videos[vid] || (scope && scope !== 'all' && scope !== vid)) return;
+    const notes = (DB.notes[vid] || []).slice().sort((a,b)=>(a.ts || 0) - (b.ts || 0));
+    const cps = (DB.checkpoints[vid] || []).slice().sort((a,b)=>a.seconds - b.seconds);
+    if(notes.length || cps.length) out.push({video:DB.videos[vid], notes, checkpoints:cps});
+  });
+  return out;
+}
+function inkPngDataUrl(ink, w){ return inkToCanvas(ink, w || 900).toDataURL('image/png'); }
+
+function exportMarkdown(data){
+  let md = '# StudyTube Notes\n\n_Timestamps are links: tap one to open the video at that moment._\n\n';
+  data.forEach(d=>{
+    md += '## [' + d.video.title.replace(/[\[\]]/g, '') + '](' + videoLink(d.video.videoId) + ')\n' + (d.video.channelTitle ? d.video.channelTitle + '\n' : '') + '\n';
+    if(d.checkpoints.length){ md += '**Checkpoints:** ' + d.checkpoints.map(c=>'[' + fmtSecs(c.seconds) + '](' + ytLink(d.video.videoId, c.seconds) + ')').join(' · ') + '\n\n'; }
+    d.notes.forEach(n=>{
+      md += '- ' + (n.pinned ? '★ ' : '') + '**[' + fmtSecs(n.ts) + '](' + ytLink(d.video.videoId, n.ts) + ')** ' + (n.text || '').replace(/\n/g, '\n  ') + '\n';
+      if(n.ink) md += '\n  ![handwritten note](' + inkPngDataUrl(n.ink, 900) + ')\n';
+    });
+    md += '\n';
+  });
+  return md;
+}
+function exportHtml(data){
+  let h = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>StudyTube Notes</title><style>' +
+    'body{font-family:' + EXPORT_FONT.replace(/"/g, "'") + ';max-width:760px;margin:36px auto;padding:0 18px;color:#0f172a;line-height:1.5}h1{margin-bottom:4px}.sub{color:#64748b;font-size:13px;margin-bottom:26px}' +
+    'h2{margin:34px 0 2px;font-size:20px}h2 a{color:#0f172a}.ch{color:#64748b;font-size:13px;margin-bottom:10px}.n{margin:12px 0;padding:10px 12px;border-left:3px solid #22d3ee;background:#f4f8fb;border-radius:0 8px 8px 0;white-space:pre-wrap;word-break:break-word}' +
+    '.ts{color:#0369a1;font-weight:700;margin-right:8px;text-decoration:none}.ts:hover{text-decoration:underline}.cp{display:inline-block;margin:2px 6px 2px 0}img{max-width:100%;display:block;margin-top:8px;border:1px solid #e2e8f0;border-radius:6px}' +
+    '@media print{body{margin:0}.n{break-inside:avoid}}</style></head><body><h1>StudyTube Notes</h1><div class="sub">Timestamps are links: click one to open the video at that moment.</div>';
+  data.forEach(d=>{
+    h += '<h2><a href="' + videoLink(d.video.videoId) + '">' + escapeHtml(d.video.title) + '</a></h2><div class="ch">' + escapeHtml(d.video.channelTitle || '') + '</div>';
+    if(d.checkpoints.length) h += '<div>📍 ' + d.checkpoints.map(c=>'<a class="ts cp" href="' + ytLink(d.video.videoId, c.seconds) + '">' + fmtSecs(c.seconds) + '</a>').join('') + '</div>';
+    d.notes.forEach(n=>{
+      h += '<div class="n"><a class="ts" href="' + ytLink(d.video.videoId, n.ts) + '">' + (n.pinned ? '★ ' : '') + '[' + fmtSecs(n.ts) + ']</a>' + escapeHtml(n.text || '');
+      if(n.ink) h += '<img alt="Handwritten note" src="' + inkPngDataUrl(n.ink, 900) + '">';
+      h += '</div>';
+    });
+  });
+  return h + '</body></html>';
+}
+
+/* ---- page composer (canvas) ---- */
+function wrapLines(ctx, text, maxW){
+  const out = [];
+  for(const par of String(text).split('\n')){
+    if(!par.trim()){ out.push(''); continue; }
+    let line = '';
+    for(const tok of par.split(/(\s+)/)){
+      if(!tok) continue;
+      if(ctx.measureText(line + tok).width <= maxW){ line += tok; continue; }
+      if(line.trim()){ out.push(line.trimEnd()); line = ''; }
+      const t = tok.trimStart();
+      if(ctx.measureText(t).width <= maxW){ line = t; continue; }
+      let cur = '';
+      for(const ch of Array.from(t)){ if(cur && ctx.measureText(cur + ch).width > maxW){ out.push(cur); cur = ch; } else cur += ch; }
+      line = cur;
+    }
+    out.push(line.trimEnd());
+  }
+  return out;
+}
+function composeExportPages(data, o){
+  const pageW = o.pageW, pageH = o.pageH, m = o.margin, k = pageW / 1240;   // everything scales from a 1240px-wide design
+  const px = (n)=>Math.round(n * k), font = (n, w)=>(w || '400') + ' ' + px(n) + 'px ' + EXPORT_FONT;
+  const contentW = pageW - 2 * m, pages = [];
+  let cv, ctx, y;
+  const newPage = ()=>{
+    cv = document.createElement('canvas'); cv.width = pageW; cv.height = pageH;
+    ctx = cv.getContext('2d'); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, pageW, pageH); ctx.textBaseline = 'alphabetic';
+    y = m; pages.push({canvas:cv, links:[], used:m});
+  };
+  const cur = ()=>pages[pages.length - 1];
+  const ensure = (h)=>{ if(y + h > pageH - m && y > m + 5) newPage(); };
+  const link = (x, yy, w, h, url)=>cur().links.push({x, y:yy, w, h, url});
+  const mark = ()=>{ cur().used = Math.max(cur().used, y); };
+  newPage();
+  ctx.fillStyle = '#0f172a'; ctx.font = font(54, '800'); ctx.fillText('StudyTube Notes', m, y + px(46)); y += px(64);
+  ctx.fillStyle = '#64748b'; ctx.font = font(24); ctx.fillText(new Date().toLocaleDateString(undefined, {year:'numeric', month:'long', day:'numeric'}) + '  ·  tap a timestamp to open the video there', m, y + px(22)); y += px(56); mark();
+
+  data.forEach(d=>{
+    const vid = d.video.videoId;
+    ctx.font = font(38, '800');
+    const tl = wrapLines(ctx, d.video.title, contentW), lh = px(48);
+    ensure(tl.length * lh + px(120));
+    ctx.fillStyle = '#0f172a'; ctx.font = font(38, '800');
+    const ty0 = y;
+    tl.forEach(l=>{ y += lh; ctx.fillText(l, m, y - px(12)); });
+    link(m, ty0, contentW, tl.length * lh, videoLink(vid));
+    ctx.fillStyle = '#64748b'; ctx.font = font(25);
+    if(d.video.channelTitle){ y += px(34); ctx.fillText(d.video.channelTitle, m, y - px(8)); }
+    y += px(22); mark();
+    ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = px(3); ctx.beginPath(); ctx.moveTo(m, y); ctx.lineTo(m + px(120), y); ctx.stroke(); y += px(26);
+
+    if(d.checkpoints.length){
+      ctx.font = font(27, '700'); let x = m; ctx.fillStyle = '#475569';
+      ensure(px(60)); ctx.fillText('Checkpoints', x, y + px(26)); x += ctx.measureText('Checkpoints').width + px(22);
+      d.checkpoints.forEach(c=>{
+        const label = fmtSecs(c.seconds); ctx.font = font(27, '700'); const w = ctx.measureText(label).width;
+        if(x + w > pageW - m){ x = m; y += px(44); ensure(px(50)); }
+        ctx.fillStyle = '#0369a1'; ctx.fillText(label, x, y + px(26));
+        ctx.fillRect(x, y + px(32), w, px(2)); link(x, y, w, px(40), ytLink(vid, c.seconds));
+        x += w + px(26);
+      });
+      y += px(62); mark();
+    }
+    d.notes.forEach(n=>{
+      const tsLabel = (n.pinned ? '★ ' : '') + '[' + fmtSecs(n.ts) + ']', url = ytLink(vid, n.ts);
+      ctx.font = font(30); const bodyLines = n.text ? wrapLines(ctx, n.text, contentW - px(20)) : [];
+      let inkC = null, inkW = 0, inkH = 0;
+      if(n.ink){
+        inkC = inkToCanvas(n.ink, Math.min(contentW - px(20), pageW), true);
+        inkW = inkC.width; inkH = inkC.height;
+        const maxH = pageH - 2 * m - px(160);
+        if(inkH > maxH){ inkW = Math.round(inkW * maxH / inkH); inkH = maxH; }
+      }
+      const blockH = px(50) + bodyLines.length * px(44) + (inkC ? inkH + px(20) : 0) + px(22);
+      ensure(Math.min(blockH, pageH - 2 * m));
+      // accent bar + timestamp (link) + small readable url
+      const top = y;
+      ctx.font = font(30, '800'); const tw = ctx.measureText(tsLabel).width;
+      ctx.fillStyle = '#0369a1'; ctx.fillText(tsLabel, m + px(18), y + px(34)); ctx.fillRect(m + px(18), y + px(40), tw, px(2));
+      link(m + px(18), y + px(2), tw, px(44), url);
+      ctx.fillStyle = '#94a3b8'; ctx.font = font(20); ctx.fillText(shortLink(url), m + px(18) + tw + px(18), y + px(32));
+      y += px(52);
+      ctx.fillStyle = '#111827'; ctx.font = font(30);
+      bodyLines.forEach(l=>{ ctx.fillText(l, m + px(18), y + px(30)); y += px(44); });
+      if(inkC){ y += px(6); ctx.drawImage(inkC, m + px(18), y, inkW, inkH); ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 1; ctx.strokeRect(m + px(18), y, inkW, inkH); y += inkH + px(14); }
+      ctx.fillStyle = '#22d3ee'; ctx.fillRect(m, top, px(5), Math.max(px(40), y - top - px(6)));
+      y += px(22); mark();
+    });
+    y += px(34);
+  });
+  return pages;
+}
+function jpegBytes(canvas, q){
+  const b64 = canvas.toDataURL('image/jpeg', q || 0.88).split(',')[1], bin = atob(b64), out = new Uint8Array(bin.length);
+  for(let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+function buildPdf(pages, pageW, pageH){
+  const A4W = 595.28, A4H = 841.89, kx = A4W / pageW, ky = A4H / pageH;
+  const enc = new TextEncoder(), chunks = [], offsets = {};
+  let off = 0;
+  const put = (x)=>{ const b = typeof x === 'string' ? enc.encode(x) : x; chunks.push(b); off += b.length; };
+  const obj = (id, body)=>{ offsets[id] = off; put(id + ' 0 obj\n'); put(body); put('\nendobj\n'); };
+  let next = 3; const info = [];
+  pages.forEach(pg=>{
+    const rec = {page:next++, content:next++, image:next++, annots:pg.links.map(()=>next++)}; info.push(rec);
+  });
+  const infoId = next++;
+  put('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n');
+  obj(1, '<< /Type /Catalog /Pages 2 0 R >>');
+  obj(2, '<< /Type /Pages /Count ' + pages.length + ' /Kids [' + info.map(r=>r.page + ' 0 R').join(' ') + '] >>');
+  pages.forEach((pg, i)=>{
+    const r = info[i], jpg = jpegBytes(pg.canvas);
+    obj(r.page, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + A4W + ' ' + A4H + '] /Resources << /XObject << /Im0 ' + r.image + ' 0 R >> >> /Contents ' + r.content + ' 0 R' +
+      (r.annots.length ? ' /Annots [' + r.annots.map(a=>a + ' 0 R').join(' ') + ']' : '') + ' >>');
+    const cs = 'q ' + A4W + ' 0 0 ' + A4H + ' 0 0 cm /Im0 Do Q';
+    obj(r.content, '<< /Length ' + cs.length + ' >>\nstream\n' + cs + '\nendstream');
+    offsets[r.image] = off; put(r.image + ' 0 obj\n<< /Type /XObject /Subtype /Image /Width ' + pg.canvas.width + ' /Height ' + pg.canvas.height + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + jpg.length + ' >>\nstream\n'); put(jpg); put('\nendstream\nendobj\n');
+    pg.links.forEach((l, j)=>{
+      const x1 = (l.x * kx).toFixed(2), x2 = ((l.x + l.w) * kx).toFixed(2), y1 = (A4H - (l.y + l.h) * ky).toFixed(2), y2 = (A4H - l.y * ky).toFixed(2);
+      const uri = l.url.replace(/[\\()]/g, '\\$&');
+      obj(r.annots[j], '<< /Type /Annot /Subtype /Link /Rect [' + x1 + ' ' + y1 + ' ' + x2 + ' ' + y2 + '] /Border [0 0 0] /A << /S /URI /URI (' + uri + ') >> >>');
+    });
+  });
+  obj(infoId, '<< /Title (StudyTube Notes) /Producer (StudyTube) >>');
+  const xref = off, total = infoId + 1;
+  put('xref\n0 ' + total + '\n0000000000 65535 f \n');
+  for(let id = 1; id < total; id++) put(String(offsets[id]).padStart(10, '0') + ' 00000 n \n');
+  put('trailer\n<< /Size ' + total + ' /Root 1 0 R /Info ' + infoId + ' 0 R >>\nstartxref\n' + xref + '\n%%EOF');
+  const all = new Uint8Array(off); let p = 0;
+  chunks.forEach(c=>{ all.set(c, p); p += c.length; });
+  return all;
+}
+
+/* ---- saving files (web download, iPad/iPhone share sheet, Android share) ---- */
+async function saveBinary(filename, blob){
+  const P = window.Capacitor && window.Capacitor.Plugins;
+  if(IS_NATIVE && P && P.Filesystem && P.Share){
+    try{
+      const buf = new Uint8Array(await blob.arrayBuffer()); let bin = '';
+      for(let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+      const r = await P.Filesystem.writeFile({path:filename, data:btoa(bin), directory:'CACHE'});
+      await P.Share.share({title:filename, url:r.uri, dialogTitle:'Save or share'});
+    }catch(e){ if(!/cancel/i.test(String(e && e.message))) toast('Export failed'); }
+    return;
+  }
+  const iosLike = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if(iosLike && typeof File !== 'undefined'){
+    try{
+      const f = new File([blob], filename, {type:blob.type});
+      if(navigator.canShare && navigator.canShare({files:[f]})){ await navigator.share({files:[f], title:filename}); return; }
+    }catch(e){ if(e && e.name === 'AbortError') return; }
+  }
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 8000);
+}
+
+async function exportNotes(format, scope){
+  scope = scope || 'all';
+  const data = collectExport(scope);
+  if(!data.length){ toast('No notes to export'); return false; }
+  const stamp = new Date().toISOString().slice(0, 10), name = 'studytube-notes-' + stamp;
+  const status = document.getElementById('exportStatus');
+  const busy = (t)=>{ if(status) status.textContent = t; };
+  try{
+    if(format === 'json'){
+      await saveBinary(name + '.json', new Blob([JSON.stringify(data.map(d=>({video:d.video, notes:d.notes, checkpoints:d.checkpoints})), null, 2)], {type:'application/json'}));
+    }else if(format === 'md'){
+      await saveBinary(name + '.md', new Blob([exportMarkdown(data)], {type:'text/markdown'}));
+    }else if(format === 'html'){
+      await saveBinary(name + '.html', new Blob([exportHtml(data)], {type:'text/html'}));
+    }else if(format === 'pdf'){
+      busy('Building your PDF…'); await new Promise(r=>setTimeout(r, 30));
+      const pageW = 1240, pageH = 1754;
+      const pages = composeExportPages(data, {pageW, pageH, margin:90});
+      pages.forEach((p, i)=>{
+        const c = p.canvas.getContext('2d'); c.fillStyle = '#94a3b8'; c.font = '400 20px ' + EXPORT_FONT; c.textAlign = 'center';
+        c.fillText('StudyTube  ·  page ' + (i + 1) + ' of ' + pages.length, pageW / 2, pageH - 40); c.textAlign = 'left';
+      });
+      await saveBinary(name + '.pdf', new Blob([buildPdf(pages, pageW, pageH)], {type:'application/pdf'}));
+    }else if(format === 'png'){
+      busy('Building your image…'); await new Promise(r=>setTimeout(r, 30));
+      const pages = composeExportPages(data, {pageW:1100, pageH:9000, margin:60});
+      for(let i = 0; i < pages.length; i++){
+        const src = pages[i].canvas, h = Math.min(src.height, pages[i].used + 60);
+        const c = document.createElement('canvas'); c.width = src.width; c.height = h; c.getContext('2d').drawImage(src, 0, 0);
+        const blob = await new Promise(r=>c.toBlob(r, 'image/png'));
+        await saveBinary(name + (pages.length > 1 ? '-' + (i + 1) : '') + '.png', blob);
+      }
+    }
+    busy(''); toast('Exported');
+    return true;
+  }catch(e){
+    console.warn('export failed', e); busy(''); toast('Export failed');
+    return false;
+  }
+}
+
+/* export sheet */
+let exportScope = 'all';
+function openExport(scope){
+  const vidOk = !!(currentVideoId && DB.videos[currentVideoId]);
+  const chip = document.getElementById('exportScopeVideo');
+  chip.style.display = vidOk ? '' : 'none';
+  exportScope = (scope && scope !== 'all' && vidOk) ? 'video' : 'all';
+  document.querySelectorAll('#exportScope .tab-chip').forEach(c=>c.classList.toggle('active', c.dataset.scope === exportScope));
+  document.getElementById('exportStatus').textContent = '';
+  openSheet('sheetExport');
+}
+document.querySelectorAll('#exportScope .tab-chip').forEach(c=>c.addEventListener('click', ()=>{
+  exportScope = c.dataset.scope;
+  document.querySelectorAll('#exportScope .tab-chip').forEach(x=>x.classList.toggle('active', x === c));
+}));
+document.querySelectorAll('#sheetExport [data-fmt]').forEach(b=>b.addEventListener('click', async ()=>{
+  const btns = document.querySelectorAll('#sheetExport [data-fmt]'); btns.forEach(x=>x.disabled = true);
+  const ok = await exportNotes(b.dataset.fmt, exportScope === 'video' ? currentVideoId : 'all');
+  btns.forEach(x=>x.disabled = false);
+  if(ok) setTimeout(()=>closeSheet('sheetExport'), 400);
+}));
+document.getElementById('libExportBtn').addEventListener('click', ()=>openExport('all'));
+document.getElementById('btnExportVideo').addEventListener('click', ()=>openExport(currentVideoId));
+document.querySelectorAll('[data-exp]').forEach(b=>b.addEventListener('click', ()=>exportNotes(b.dataset.exp, 'all')));
 
 /* ============================================================
    INIT
