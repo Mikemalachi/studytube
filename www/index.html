@@ -494,9 +494,29 @@ select{background:rgba(255,255,255,0.05); color:var(--text-1); border:1px solid 
       <button class="btn sm block" id="installBtn" style="margin-top:10px;">⬇️ Install StudyTube</button>
     </div>
 
+    <div class="card" style="margin-bottom:14px;" id="syncCard">
+      <div class="field-label">Sync across devices</div>
+      <div id="syncOff">
+        <p style="font-size:12px; color:var(--text-2); line-height:1.5;">Keep notes, checkpoints, favorites, watch later, completed videos, history and resume positions the same on every device. It is encrypted on your device before it is uploaded to your own relay, so nobody else can read it. Stores it on your relay (Cloudflare) or in your own Google Sheet.</p>
+        <button class="btn sm block" id="syncEnableBtn" style="margin-top:10px;">☁️ Turn on sync</button>
+        <button class="btn sm block ghost" id="syncJoinBtn" style="margin-top:8px;">🔑 I already have a sync key</button>
+        <button class="btn sm block ghost" id="syncSheetsBtn" style="margin-top:8px;">📄 Use Google Sheets instead</button>
+        <p style="font-size:11px; color:var(--text-2); line-height:1.5; margin-top:8px;" id="syncWhere"></p>
+      </div>
+      <div id="syncOn" style="display:none;">
+        <p style="font-size:12px; color:var(--text-2); line-height:1.5;" id="syncStatus"></p>
+        <div class="grid-2" style="margin-top:10px;">
+          <button class="btn sm" id="syncNowBtn">🔄 Sync now</button>
+          <button class="btn sm" id="syncKeyBtn">🔑 Show key</button>
+        </div>
+        <button class="btn sm block ghost" id="syncOffBtn" style="margin-top:8px;">Turn off sync</button>
+        <p style="font-size:11px; color:var(--text-2); line-height:1.5; margin-top:8px;">To add another device, use Show QR in the next card. It carries the sync key too.</p>
+      </div>
+    </div>
+
     <div class="card" style="margin-bottom:14px;">
       <div class="field-label">Set up another device</div>
-      <p style="font-size:12px; color:var(--text-2); line-height:1.5;">Copy your relay and channels to another device with a QR code. Notes and history are not included, so use Export Backup for those.</p>
+      <p style="font-size:12px; color:var(--text-2); line-height:1.5;">Copy your relay and channels to another device with a QR code. If sync is on, the sync key comes along too, so keep the QR private. Without sync, use Export Backup for notes and history.</p>
       <div class="grid-2" style="margin-top:10px;">
         <button class="btn sm" id="showQrBtn">📤 Show QR</button>
         <button class="btn sm" id="scanQrBtn">📷 Scan QR</button>
@@ -626,6 +646,7 @@ function defaultDB(){
     videos:{},              // videoId -> {videoId, channelId, channelTitle, title, thumb, published, url, seen}
     channelIdCache:{},      // rawInput -> channelId
     history:[],             // videoIds, most recent first
+    historyAt:{},           // videoId -> ms timestamp of last watch (used by sync ordering)
     favorites:[],
     watchLater:[],
     completed:[],
@@ -651,14 +672,24 @@ function loadDB(){
   return d;
 }
 let DB = loadDB();
+const SYNC_STORE = "studytube_sync_v1";
+function loadSync(){
+  try{
+    const r = JSON.parse(localStorage.getItem(SYNC_STORE) || "null");
+    if(r && typeof r.key === "string" && r.key) return {key:r.key, map:(r.map && typeof r.map==="object")?r.map:{}, rev:r.rev|0, lastSync:+r.lastSync||0, lastErr:String(r.lastErr||"")};
+  }catch(e){}
+  return {key:"", map:{}, rev:0, lastSync:0, lastErr:""};
+}
+let SYNC = loadSync();
 let saveTimer=null;
-function save(){
+function save(slow){
   clearTimeout(saveTimer);
   saveTimer = setTimeout(()=>{
     localStorage.setItem(DB_KEY, JSON.stringify(DB));
   }, 150);
+  markDirty(slow === true);
 }
-function saveNow(){ localStorage.setItem(DB_KEY, JSON.stringify(DB)); }
+function saveNow(){ localStorage.setItem(DB_KEY, JSON.stringify(DB)); markDirty(false); }
 
 /* ============================================================
    UTIL
@@ -1184,6 +1215,7 @@ function openPlayer(videoId){
   if(!DB.history.includes(videoId)) DB.history.unshift(videoId);
   else { DB.history.splice(DB.history.indexOf(videoId),1); DB.history.unshift(videoId); }
   DB.history = DB.history.slice(0,300);
+  DB.historyAt[videoId] = Date.now();
   saveNow();
 
   document.getElementById('playerTitle').textContent = v.title;
@@ -1202,7 +1234,7 @@ function openPlayer(videoId){
 function onPlayerStateChange(e){
   if(!ytPlayer || !currentVideoId) return;
   if(e.data===YT.PlayerState.PLAYING) startResumePolling();
-  if(e.data===YT.PlayerState.PAUSED || e.data===YT.PlayerState.ENDED) saveResumePosition();
+  if(e.data===YT.PlayerState.PAUSED || e.data===YT.PlayerState.ENDED){ saveResumePosition(); scheduleSync(6000); }
 }
 function startResumePolling(){
   clearInterval(resumePollTimer);
@@ -1218,7 +1250,7 @@ function saveResumePosition(){
     if(t/dur > 0.92 && !DB.completed.includes(currentVideoId)){
       DB.completed.push(currentVideoId);
     }
-    save();
+    save(true);
   }catch(e){/* player not ready */}
 }
 document.getElementById('btnOpenYT').addEventListener('click', ()=>{
@@ -1412,7 +1444,7 @@ function renderLibrary(){
 /* Library clear/export */
 document.getElementById('libClearTabBtn').addEventListener('click', ()=>{
   if(!confirm('Clear all items in "'+libTab+'"? This cannot be undone.')) return;
-  if(libTab==='history') DB.history = [];
+  if(libTab==='history'){ DB.history = []; DB.historyAt = {}; }
   else if(libTab==='favorites') DB.favorites = [];
   else if(libTab==='later') DB.watchLater = [];
   else if(libTab==='completed') DB.completed = [];
@@ -1430,8 +1462,8 @@ document.getElementById('libClearEmptyBtn').addEventListener('click', ()=>{
   saveNow(); renderLibrary(); toast('Cleaned up empty entries');
 });
 document.getElementById('libClearAllBtn').addEventListener('click', ()=>{
-  if(!confirm('Erase ALL library data (history, favorites, notes, everything)? This cannot be undone.')) return;
-  DB.history=[]; DB.favorites=[]; DB.watchLater=[]; DB.completed=[]; DB.notes={}; DB.checkpoints={}; DB.categories={}; DB.resume={};
+  if(!confirm('Erase ALL library data (history, favorites, notes, everything)? This cannot be undone.' + (SYNC.key ? '\n\nSync is on, so this will also erase it on your other devices.' : ''))) return;
+  DB.history=[]; DB.historyAt={}; DB.favorites=[]; DB.watchLater=[]; DB.completed=[]; DB.notes={}; DB.checkpoints={}; DB.categories={}; DB.resume={};
   saveNow(); renderLibrary(); renderHome(); toast('Library erased');
 });
 document.getElementById('libExportBtn').addEventListener('click', ()=>exportNotes('md'));
@@ -1576,6 +1608,8 @@ document.getElementById('wipeAllBtn').addEventListener('click', ()=>{
   if(!confirm('This erases everything — channels, videos, notes, backups. Continue?')) return;
   if(!confirm('Are you absolutely sure? This cannot be undone.')) return;
   localStorage.removeItem(DB_KEY);
+  localStorage.removeItem(SYNC_STORE);
+  SYNC = loadSync(); renderSyncCard();
   DB = loadDB();
   renderAll();
   toast('All data erased');
@@ -1625,6 +1659,8 @@ async function buildSetupCode(){
   const payload = {
     v:1,
     r: customRelayUrl(),
+    s: SYNC.key || undefined,
+    u: sheetsUrl() || undefined,
     c: DB.channels.map(ch => [ch.channelId, (ch.title||"").slice(0,80), shortHandle(ch.handle)])
   };
   const raw = new TextEncoder().encode(JSON.stringify(payload));
@@ -1652,8 +1688,10 @@ async function parseSetupCode(input){
     }
   }
   const relay = (typeof p.r === "string" && p.r.length < 300 && /^https:\/\/[^\s]+\{url\}/.test(p.r)) ? p.r : "";
-  if(!channels.length && !relay) throw new Error("empty setup");
-  return {channels, relay};
+  const sync = (typeof p.s === "string" && /^[A-Za-z0-9_-]{20,64}$/.test(p.s)) ? p.s : "";
+  const syncUrl = (typeof p.u === "string" && SHEETS_URL_RE.test(p.u)) ? p.u : "";
+  if(!channels.length && !relay && !sync && !syncUrl) throw new Error("empty setup");
+  return {channels, relay, sync, syncUrl};
 }
 function setupBaseUrl(){
   const web = /^https?:$/.test(location.protocol) && !IS_NATIVE && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname);
@@ -1670,15 +1708,21 @@ async function importSetup(input){
   if(fresh.length) parts.push(fresh.length + " new channel" + (fresh.length===1?"":"s"));
   let host = "";
   if(newRelay){ try{ host = new URL(setup.relay.replace("{url}","x")).host; }catch(e){ host = "unknown"; } parts.push("the relay at " + host); }
+  const newSyncUrl = setup.syncUrl && setup.syncUrl !== sheetsUrl();
+  if(newSyncUrl) parts.push("the Google Sheets sync address");
+  const newSync = setup.sync && setup.sync !== SYNC.key;
+  if(newSync) parts.push("sync (notes, favorites and history will be merged with your other devices)");
   if(!parts.length){ toast("Nothing new. This device already has it."); return true; }
-  if(!confirm("Add " + parts.join(" and ") + " to this device?")) return false;
+  if(!confirm("Add " + parts.join(" and ") + " to this device?" + (newSync && SYNC.key ? "\n\nThis device is already syncing with a different key. It will switch to the new one." : ""))) return false;
   if(newRelay){
     DB.settings.customProxy = setup.relay;
     const ci = document.getElementById("customProxyInput"); if(ci) ci.value = setup.relay;
   }
+  if(newSyncUrl) DB.settings.syncUrl = setup.syncUrl;
   fresh.forEach(c => DB.channels.push({id:uid(), channelId:c.channelId, title:c.title||"Unnamed channel", handle:c.handle||"", addedAt:new Date().toISOString(), lastChecked:null, lastError:null}));
   saveNow(); renderChannels(); renderHome();
   toast("Imported " + parts.join(" and "));
+  if(newSync){ startSync(setup.sync); }
   if(fresh.length) checkAllChannels();
   return true;
 }
@@ -1707,7 +1751,7 @@ function drawQr(canvas, text){
   return false;
 }
 async function showSetupQr(){
-  if(DB.channels.length === 0 && !customRelayUrl()){ toast("Add a channel or a relay first"); return; }
+  if(DB.channels.length === 0 && !customRelayUrl() && !SYNC.key && !sheetsUrl()){ toast("Add a channel, a relay or turn on sync first"); return; }
   const code = await buildSetupCode();
   currentSetupLink = setupBaseUrl() + "#setup=" + code;
   const canvas = document.getElementById("qrCanvas");
@@ -1715,7 +1759,7 @@ async function showSetupQr(){
   const ok = drawQr(canvas, currentSetupLink);
   canvas.style.display = ok ? "block" : "none";
   document.getElementById("qrInfo").textContent = ok
-    ? "Contains " + (customRelayUrl() ? "your relay and " : "") + n + " channel" + (n===1?"":"s") + ". On the other device open Settings, then Set up another device, then Scan QR."
+    ? "Contains " + (customRelayUrl() ? "your relay and " : "") + (SYNC.key ? "your sync key and " : "") + n + " channel" + (n===1?"":"s") + ". On the other device open Settings, then Set up another device, then Scan QR."
     : "Too many channels for one QR code. Use Copy link instead, or Export Backup.";
   openSheet("sheetShareQR");
 }
@@ -1785,6 +1829,354 @@ document.getElementById("setupImportBtn").addEventListener("click", async ()=>{
 });
 
 /* ============================================================
+   SYNC — encrypted, merge-based, offline-first.
+   Every synced fact is one entry: key -> {v:value, t:ms} or a tombstone {d:1, t:ms}.
+   The newest entry per key wins, so devices converge even after offline edits.
+   The whole map is AES-GCM encrypted on this device before upload.
+============================================================ */
+const VID_RE = /^[\w-]{11}$/;
+const TOMB_TTL = 90*24*3600*1000;
+class SyncErr extends Error {}
+
+function saveSync(){ try{ localStorage.setItem(SYNC_STORE, JSON.stringify(SYNC)); }catch(e){} }
+
+/* ---- flatten the local library into key/value facts ---- */
+function syncFlatten(){
+  const f = {}, hint = {}, refs = new Set(), now = Date.now();
+  let stamped = false;
+  DB.history.forEach((vid,i)=>{
+    if(typeof DB.historyAt[vid] !== "number"){ DB.historyAt[vid] = now - i*1000; stamped = true; }
+  });
+  if(stamped){ try{ localStorage.setItem(DB_KEY, JSON.stringify(DB)); }catch(e){} }
+  const add = (k,v,vid,idx)=>{ f[k] = v; if(vid) refs.add(vid); if(idx !== undefined) hint[k] = idx; };
+  for(const [vid,arr] of Object.entries(DB.notes)){
+    if(!VID_RE.test(vid) || !Array.isArray(arr)) continue;
+    for(const n of arr) if(n && typeof n.id === "string") add("n|"+vid+"|"+n.id, {text:n.text, ts:n.ts, pinned:!!n.pinned, createdAt:n.createdAt}, vid);
+  }
+  for(const [vid,arr] of Object.entries(DB.checkpoints)){
+    if(!VID_RE.test(vid) || !Array.isArray(arr)) continue;
+    for(const c of arr) if(c && typeof c.id === "string") add("c|"+vid+"|"+c.id, {label:c.label, seconds:c.seconds}, vid);
+  }
+  [["f",DB.favorites],["w",DB.watchLater],["d",DB.completed]].forEach(([p,list])=>{
+    list.forEach((vid,i)=>{ if(VID_RE.test(vid)) add(p+"|"+vid, 1, vid, p==="d" ? undefined : i); });
+  });
+  DB.history.forEach(vid=>{ if(VID_RE.test(vid)) add("h|"+vid, DB.historyAt[vid], vid); });
+  for(const [vid,r] of Object.entries(DB.resume)){
+    if(VID_RE.test(vid) && r && typeof r.seconds === "number") add("r|"+vid, {seconds:Math.round(r.seconds*10)/10, updatedAt:r.updatedAt}, vid);
+  }
+  for(const [name,arr] of Object.entries(DB.categories)){
+    const en = encodeURIComponent(name);
+    add("G|"+en, 1);
+    (arr||[]).forEach(vid=>{ if(VID_RE.test(vid)) add("g|"+en+"|"+vid, 1, vid); });
+  }
+  refs.forEach(vid=>{
+    const v = DB.videos[vid];
+    if(v) f["v|"+vid] = {channelId:v.channelId||"", channelTitle:v.channelTitle||"", title:v.title||"", published:v.published||""};
+  });
+  return {f, hint};
+}
+function syncStamp(k, v, idx, now){
+  const c = k[0];
+  if(c === "h" && typeof v === "number") return v;
+  if(c === "r"){ const t = Date.parse(v.updatedAt); if(t) return t; }
+  if((c === "f" || c === "w") && idx !== undefined) return now - idx;
+  return now;
+}
+/* ---- fold local edits into the map (new/changed -> stamped now, missing -> tombstone) ---- */
+function syncRefreshLocal(){
+  const {f,hint} = syncFlatten(), now = Date.now(), m = SYNC.map;
+  for(const k in f){
+    const cur = m[k];
+    if(!cur || cur.d || JSON.stringify(cur.v) !== JSON.stringify(f[k])) m[k] = {v:f[k], t:syncStamp(k, f[k], hint[k], now)};
+  }
+  for(const k in m){
+    if(!(k in f) && !m[k].d && k[0] !== "v") m[k] = {d:1, t:now};
+  }
+}
+function syncMerge(local, remote){
+  const out = {}, cutoff = Date.now() - TOMB_TTL;
+  const keys = new Set([...Object.keys(local), ...Object.keys(remote)]);
+  for(const k of keys){
+    const a = local[k], b = remote[k];
+    let w;
+    if(!a) w = b; else if(!b) w = a;
+    else if(a.t !== b.t) w = a.t > b.t ? a : b;
+    else if(!!a.d !== !!b.d) w = a.d ? a : b;
+    else w = JSON.stringify(a.v) >= JSON.stringify(b.v) ? a : b;
+    if(w.d && w.t < cutoff) continue;
+    out[k] = w;
+  }
+  return out;
+}
+function syncSame(a, b){
+  const ka = Object.keys(a);
+  if(ka.length !== Object.keys(b).length) return false;
+  for(const k of ka){
+    const x = a[k], y = b[k];
+    if(!y || x.t !== y.t || !!x.d !== !!y.d || (!x.d && JSON.stringify(x.v) !== JSON.stringify(y.v))) return false;
+  }
+  return true;
+}
+/* ---- rebuild the library from the merged map (validates everything that came from the cloud) ---- */
+function clampStr(x, n){ return typeof x === "string" ? x.slice(0,n) : ""; }
+function syncApply(map){
+  const snap = ()=>JSON.stringify([DB.notes,DB.checkpoints,DB.favorites,DB.watchLater,DB.completed,DB.history,DB.resume,DB.categories,Object.keys(DB.videos).length]);
+  const before = snap();
+  const notes = {}, cps = {}, favs = [], laters = [], dones = [], hist = [], resume = {}, cats = {}, meta = {};
+  for(const k in map){
+    const e = map[k];
+    if(!e || e.d || typeof k !== "string" || k.length > 400) continue;
+    const parts = k.split("|"), c = parts[0], v = e.v;
+    if(c === "n" && parts.length === 3 && VID_RE.test(parts[1]) && /^[\w-]{1,40}$/.test(parts[2]) && v && typeof v === "object"){
+      (notes[parts[1]] = notes[parts[1]] || []).push({id:parts[2], text:clampStr(v.text,500000), ts:Number.isFinite(v.ts)?v.ts:0, pinned:!!v.pinned, createdAt:clampStr(v.createdAt,40)});
+    }else if(c === "c" && parts.length === 3 && VID_RE.test(parts[1]) && /^[\w-]{1,40}$/.test(parts[2]) && v && Number.isFinite(v.seconds)){
+      (cps[parts[1]] = cps[parts[1]] || []).push({id:parts[2], label:clampStr(v.label,60), seconds:Math.max(0,v.seconds)});
+    }else if((c === "f" || c === "w" || c === "d") && parts.length === 2 && VID_RE.test(parts[1])){
+      (c==="f"?favs:c==="w"?laters:dones).push({vid:parts[1], t:e.t});
+    }else if(c === "h" && parts.length === 2 && VID_RE.test(parts[1]) && Number.isFinite(v)){
+      hist.push({vid:parts[1], t:v});
+    }else if(c === "r" && parts.length === 2 && VID_RE.test(parts[1]) && v && Number.isFinite(v.seconds)){
+      resume[parts[1]] = {seconds:Math.max(0,v.seconds), updatedAt:clampStr(v.updatedAt,40)};
+    }else if(c === "G" && parts.length === 2){
+      try{ const n = decodeURIComponent(parts[1]).slice(0,80); if(n) cats[n] = cats[n] || []; }catch(err){}
+    }else if(c === "g" && parts.length === 3 && VID_RE.test(parts[2])){
+      try{ const n = decodeURIComponent(parts[1]).slice(0,80); if(n) (cats[n] = cats[n] || []).push({vid:parts[2], t:e.t}); }catch(err){}
+    }else if(c === "v" && parts.length === 2 && VID_RE.test(parts[1]) && v && typeof v === "object"){
+      meta[parts[1]] = v;
+    }
+  }
+  for(const vid in notes) notes[vid].sort((a,b)=> a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : (a.id < b.id ? -1 : 1));
+  for(const vid in cps) cps[vid].sort((a,b)=> a.seconds - b.seconds || (a.id < b.id ? -1 : 1));
+  const byNewest = (a,b)=> b.t - a.t || (a.vid < b.vid ? -1 : 1);
+  const byOldest = (a,b)=> a.t - b.t || (a.vid < b.vid ? -1 : 1);
+  hist.sort(byNewest);
+  const keepHist = hist.slice(0,300);
+  DB.notes = notes;
+  DB.checkpoints = cps;
+  DB.favorites = favs.sort(byNewest).map(x=>x.vid);
+  DB.watchLater = laters.sort(byNewest).map(x=>x.vid);
+  DB.completed = dones.sort(byOldest).map(x=>x.vid);
+  DB.history = keepHist.map(x=>x.vid);
+  DB.historyAt = {}; keepHist.forEach(x=>{ DB.historyAt[x.vid] = x.t; });
+  DB.resume = resume;
+  const outCats = {};
+  for(const n in cats) outCats[n] = Array.isArray(cats[n]) ? cats[n].sort(byOldest).map(x=>x.vid) : [];
+  DB.categories = outCats;
+  for(const vid in meta){
+    if(DB.videos[vid]) continue;
+    const m = meta[vid];
+    DB.videos[vid] = {videoId:vid, channelId:/^UC[\w-]{22}$/.test(m.channelId) ? m.channelId : "", channelTitle:clampStr(m.channelTitle,200),
+      title:clampStr(m.title,300) || "Untitled", published:clampStr(m.published,40) || new Date().toISOString(),
+      url:"https://www.youtube.com/watch?v="+vid, thumb:"https://i.ytimg.com/vi/"+vid+"/hqdefault.jpg", seen:true};
+  }
+  keepHist.forEach(x=>{ if(DB.videos[x.vid]) DB.videos[x.vid].seen = true; });
+  try{ localStorage.setItem(DB_KEY, JSON.stringify(DB)); }catch(err){}
+  return snap() !== before;
+}
+
+/* ---- crypto ---- */
+async function syncKeys(key){
+  const enc = new TextEncoder();
+  const h = async s => new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode(s)));
+  const id = Array.from(await h("studytube-id:"+key)).map(b=>b.toString(16).padStart(2,"0")).join("").slice(0,32);
+  const ek = await crypto.subtle.importKey("raw", await h("studytube-enc:"+key), "AES-GCM", false, ["encrypt","decrypt"]);
+  return {id, ek};
+}
+async function syncSeal(ek, obj){
+  let raw = new TextEncoder().encode(JSON.stringify(obj)), flag = 0;
+  if(typeof CompressionStream !== "undefined"){
+    try{ const z = await streamBytes(new CompressionStream("deflate-raw"), raw); if(z.length < raw.length){ raw = z; flag = 1; } }catch(e){}
+  }
+  const body = new Uint8Array(raw.length + 1); body[0] = flag; body.set(raw, 1);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM", iv}, ek, body));
+  const out = new Uint8Array(12 + ct.length); out.set(iv); out.set(ct, 12);
+  return b64uEncode(out);
+}
+async function syncOpen(ek, data){
+  let plain;
+  try{
+    const bin = b64uDecode(data);
+    plain = new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM", iv:bin.slice(0,12)}, ek, bin.slice(12)));
+  }catch(e){ throw new SyncErr("The sync key does not match the data in the cloud."); }
+  let bytes = plain.slice(1);
+  if(plain[0] === 1) bytes = await streamBytes(new DecompressionStream("deflate-raw"), bytes);
+  const obj = JSON.parse(new TextDecoder().decode(bytes));
+  if(!obj || obj.v !== 1 || !obj.map || typeof obj.map !== "object") throw new SyncErr("The cloud copy is in an unknown format.");
+  const clean = {};
+  for(const k of Object.keys(obj.map)){
+    const e = obj.map[k];
+    if(k.length <= 400 && e && typeof e === "object" && Number.isFinite(e.t)) clean[k] = e.d ? {d:1, t:e.t} : {v:e.v, t:e.t};
+  }
+  return clean;
+}
+
+/* ---- network (same Worker as the relay) ---- */
+const SHEETS_URL_RE = /^https:\/\/script\.google\.com\/(?:a\/macros\/[\w.-]+\/|macros\/)s\/[\w-]+\/exec$/;
+function sheetsUrl(){ const u = DB.settings.syncUrl; return (typeof u === "string" && SHEETS_URL_RE.test(u)) ? u : ""; }
+function syncBase(){
+  if(sheetsUrl()) return sheetsUrl();
+  const r = customRelayUrl(); if(!r) return "";
+  try{ return new URL(r.replace("{url}","x")).origin; }catch(e){ return ""; }
+}
+async function syncReq(method, id, body){
+  const base = syncBase();
+  if(!base) throw new SyncErr("Add your relay or Google Sheets address first (Settings).");
+  const sheets = !!sheetsUrl();
+  let res;
+  const ctl = (typeof AbortController !== "undefined") ? new AbortController() : null;
+  try{
+    let url, opts;
+    if(sheets){
+      // Apps Script can't answer CORS preflights, so use simple requests: GET with a query, POST as text/plain.
+      if(method === "GET"){ url = base + "?id=" + id; opts = {cache:"no-store"}; }
+      else{
+        url = base;
+        opts = {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, cache:"no-store",
+                body: JSON.stringify(method === "DELETE" ? {action:"delete", id} : {action:"put", id, rev:body.rev, data:body.data})};
+      }
+    }else{
+      url = base + "/sync/" + id;
+      opts = {method, headers: body ? {"Content-Type":"application/json"} : undefined, body: body ? JSON.stringify(body) : undefined, cache:"no-store"};
+    }
+    opts.signal = ctl && ctl.signal;
+    res = await withTimeout(fetch(url, opts), 25000);
+  }catch(e){ if(ctl) ctl.abort(); throw new SyncErr(sheets ? "Can't reach Google. Offline? Will retry." : "Can't reach your relay. Offline? Will retry."); }
+  let j = null; try{ j = await res.json(); }catch(e){}
+  if(sheets){
+    if(!j || typeof j !== "object") throw new SyncErr("Google didn't return sync data. In Deploy settings, 'Who has access' must be Anyone.");
+    if(j.error === "conflict") return {status:409, j};
+    if(j.error === "too-big") return {status:413, j};
+    if(j.error) throw new SyncErr("Google Sheets sync error: " + String(j.error).slice(0,40));
+    return {status:200, j};
+  }
+  if(res.status === 501 && j && j.error === "no-storage") throw new SyncErr("Your Worker has no SYNC storage yet. See step 2 of the sync setup.");
+  if(!j || typeof j !== "object") throw new SyncErr("Your relay Worker needs the sync update (paste the new relay.js).");
+  return {status:res.status, j};
+}
+
+/* ---- the sync run ---- */
+let syncBusy = false, syncAgain = false, syncTimer = null, syncDue = 0;
+function scheduleSync(ms){
+  if(!SYNC.key) return;
+  const due = Date.now() + ms;
+  if(syncTimer && syncDue <= due) return;
+  clearTimeout(syncTimer); syncDue = due;
+  syncTimer = setTimeout(()=>{ syncTimer = null; syncDue = 0; runSync(false); }, ms);
+}
+function markDirty(slow){ scheduleSync(slow ? 60000 : 12000); }
+
+async function runSync(manual){
+  if(!SYNC.key) return false;
+  if(syncBusy){ syncAgain = true; return false; }
+  if(typeof navigator !== "undefined" && navigator.onLine === false){ if(manual) toast("You're offline"); return false; }
+  syncBusy = true; renderSyncCard("Syncing…");
+  let ok = false, changed = false;
+  try{
+    if(!(window.crypto && crypto.subtle)) throw new SyncErr("Sync needs a secure (https) page.");
+    const {id,ek} = await syncKeys(SYNC.key);
+    let r = await syncReq("GET", id), tries = 0;
+    for(;;){
+      if(r.status !== 200 && r.status !== 409) throw new SyncErr("Sync server error (" + r.status + ").");
+      const remoteRev = r.j.rev | 0;
+      const remoteMap = r.j.data ? await syncOpen(ek, r.j.data) : {};
+      // no awaits from here until the library is rebuilt, so nothing can change underneath us
+      syncRefreshLocal();
+      const merged = syncMerge(SYNC.map, remoteMap);
+      SYNC.map = merged;
+      if(syncApply(merged)) changed = true;
+      if(syncSame(merged, remoteMap)){ SYNC.rev = remoteRev; break; }
+      const data = await syncSeal(ek, {v:1, map:merged});
+      r = await syncReq("PUT", id, {rev:remoteRev, data});
+      if(r.status === 200){ SYNC.rev = r.j.rev | 0; break; }
+      if(r.status === 409 && ++tries < 4) continue;
+      throw new SyncErr(r.status === 413 ? "Your library is too big to sync." : "Could not save to the cloud (" + r.status + ").");
+    }
+    SYNC.lastSync = Date.now(); SYNC.lastErr = ""; ok = true;
+  }catch(e){
+    SYNC.lastErr = (e instanceof SyncErr) ? e.message : "Sync failed. Will retry.";
+    if(!(e instanceof SyncErr)) console.warn("sync failed", e);
+  }
+  saveSync(); syncBusy = false;
+  if(changed){
+    renderHome(); renderLibrary(); renderVideoList();
+    if(currentVideoId){ renderCheckpoints(); renderNotes(); updatePlayerToggleStates(); }
+  }
+  renderSyncCard();
+  if(manual) toast(ok ? (changed ? "Synced. Updated from your other devices." : "Synced. Everything is up to date.") : SYNC.lastErr);
+  if(syncAgain){ syncAgain = false; scheduleSync(2000); }
+  return ok;
+}
+
+/* ---- UI ---- */
+function renderSyncCard(busyText){
+  const on = !!SYNC.key;
+  const a = document.getElementById("syncOff"), b = document.getElementById("syncOn");
+  if(!a || !b) return;
+  a.style.display = on ? "none" : "block";
+  b.style.display = on ? "block" : "none";
+  const w = document.getElementById("syncWhere");
+  if(w) w.textContent = sheetsUrl() ? "Storage: your Google Sheet." : "";
+  if(!on) return;
+  let t = busyText;
+  if(!t){
+    if(SYNC.lastErr) t = "⚠️ " + SYNC.lastErr;
+    else if(SYNC.lastSync) t = "✅ On (" + (sheetsUrl() ? "Google Sheets" : "relay") + "). Last synced " + timeAgo(new Date(SYNC.lastSync).toISOString()) + ".";
+    else t = "On. Waiting for the first sync.";
+  }
+  document.getElementById("syncStatus").textContent = t;
+}
+function newSyncKey(){ return b64uEncode(crypto.getRandomValues(new Uint8Array(20))); }
+function startSync(key){
+  SYNC = {key, map:{}, rev:0, lastSync:0, lastErr:""};
+  saveSync(); renderSyncCard();
+  return runSync(true);
+}
+document.getElementById("syncEnableBtn").addEventListener("click", ()=>{
+  if(!syncBase()){ toast("Add your relay or a Google Sheets address first"); return; }
+  if(!(window.crypto && crypto.subtle)){ toast("Sync needs a secure (https) page"); return; }
+  if(!confirm("Turn on sync? Your notes, favorites, watch later, completed, history and resume positions will be encrypted and stored on your relay Worker.")) return;
+  startSync(newSyncKey());
+});
+document.getElementById("syncJoinBtn").addEventListener("click", ()=>{
+  if(!syncBase()){ toast("Add your relay or a Google Sheets address first"); return; }
+  const k = (prompt("Paste the sync key from your other device (or just scan its QR instead):") || "").trim();
+  if(!k) return;
+  if(!/^[A-Za-z0-9_-]{20,64}$/.test(k)){ toast("That doesn't look like a sync key"); return; }
+  startSync(k);
+});
+document.getElementById("syncSheetsBtn").addEventListener("click", ()=>{
+  const cur = DB.settings.syncUrl || "";
+  const u = (prompt("Paste your Google Sheets web app address (ends in /exec). Leave empty to go back to your relay.", cur) || "").trim();
+  if(u === "" ){ if(cur && confirm("Stop using Google Sheets and use your relay instead?")){ DB.settings.syncUrl = ""; saveNow(); renderSyncCard(); } return; }
+  if(!SHEETS_URL_RE.test(u)){ toast("That isn't a Google Apps Script web app address"); return; }
+  DB.settings.syncUrl = u; saveNow(); renderSyncCard(); toast("Google Sheets address saved. Now turn on sync.");
+});
+document.getElementById("syncNowBtn").addEventListener("click", ()=>runSync(true));
+document.getElementById("syncKeyBtn").addEventListener("click", ()=>{ prompt("Your sync key. Keep it private, anyone with it can read your synced data:", SYNC.key); });
+document.getElementById("syncOffBtn").addEventListener("click", async ()=>{
+  if(!confirm("Stop syncing on this device? Your data stays on this device.")) return;
+  const del = confirm("Also delete the encrypted copy from the cloud?\n\nOK = delete it (other devices will stop syncing).\nCancel = keep it so other devices continue.");
+  if(del){
+    try{ const {id} = await syncKeys(SYNC.key); await syncReq("DELETE", id); }catch(e){ toast("Couldn't delete the cloud copy"); }
+  }
+  clearTimeout(syncTimer); syncTimer = null; syncDue = 0;
+  try{ localStorage.removeItem(SYNC_STORE); }catch(e){}
+  SYNC = loadSync(); renderSyncCard();
+  toast("Sync turned off");
+});
+function initSync(){
+  scheduleSync(1500);
+  document.addEventListener("visibilitychange", ()=>{
+    if(!SYNC.key) return;
+    if(document.visibilityState === "hidden"){ if(syncTimer){ clearTimeout(syncTimer); syncTimer = null; syncDue = 0; runSync(false); } }
+    else if(Date.now() - SYNC.lastSync > 20000) scheduleSync(500);
+  });
+  window.addEventListener("online", ()=>scheduleSync(1000));
+  setInterval(()=>{ if(SYNC.key && document.visibilityState === "visible" && Date.now() - SYNC.lastSync > 170000) runSync(false); }, 60000);
+}
+
+/* ============================================================
    INIT
 ============================================================ */
 function renderAll(){
@@ -1796,7 +2188,9 @@ function renderAll(){
   document.getElementById('customProxyInput').value = DB.settings.customProxy||'';
 }
 renderAll();
+renderSyncCard();
 handleSetupHash();
+initSync();
 
 document.getElementById('channelInput').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('channelSubmitBtn').click(); });
 document.getElementById('noteInput').addEventListener('keydown', e=>{ if(e.key==='Enter' && (e.ctrlKey||e.metaKey)) document.getElementById('noteAddBtn').click(); });
