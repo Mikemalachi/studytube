@@ -216,6 +216,7 @@ input::placeholder, textarea::placeholder{color:var(--text-3);}
 .page > *{flex-shrink:0;}
 .tabbar{flex:0 0 auto;}
 /* handwriting */
+#inkEditor,#inkEditor *{-webkit-user-select:none; user-select:none; -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent;}
 #inkEditor{position:fixed; z-index:28; display:none; flex-direction:column; background:#fffef9; border-radius:var(--radius-md); overflow:hidden; border:1px solid var(--glass-border); box-shadow:0 10px 30px rgba(0,0,0,.45); left:0; top:0; width:0; height:0;}
 #inkEditor.open{display:flex;}
 #inkEditor.full{border-radius:0; border:0;}
@@ -234,6 +235,27 @@ input::placeholder, textarea::placeholder{color:var(--text-3);}
 .ink-wrap{flex:1 1 auto; min-height:0; overflow:auto; background:#e8ecf3; padding:8px; -webkit-overflow-scrolling:touch; overscroll-behavior:contain;}
 #inkCanvas{display:block; margin:0 auto; background:#fffef9; box-shadow:0 1px 6px rgba(0,0,0,.25); touch-action:none; -webkit-touch-callout:none; user-select:none; -webkit-user-select:none;}
 .ink-foot{flex:0 0 auto; display:flex; align-items:center; gap:8px; padding:5px 10px; background:#0b1226; font-size:11px; color:var(--text-3);}
+/* compact one-row toolbar */
+.ink-bar{flex-wrap:nowrap; overflow:visible; gap:3px; padding:5px 6px;}
+.ink-bar > .ink-btn{flex:1 1 0; min-width:0; max-width:46px; height:34px; padding:0; font-size:15px; display:flex; align-items:center; justify-content:center; position:relative;}
+.ink-bar > .ink-btn.save{flex:0 0 auto; max-width:none; padding:0 12px; margin-left:2px; font-size:13px; position:static;}
+.ink-bar .ink-sep{flex:0 0 1px; margin:0 1px;}
+.ink-btn[data-tool].on.has-pop::after{content:"▾"; position:absolute; right:2px; bottom:-1px; font-size:9px; opacity:.8;}
+.ink-swatch{display:block; width:20px; height:20px; border-radius:50%; background:#1a1a1a; border:2px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,.4);}
+#inkEditor{position:fixed;}
+.ink-pop{position:absolute; z-index:5; left:8px; top:48px; background:#0f1a36; border:1px solid var(--glass-border); border-radius:12px; padding:10px; box-shadow:0 10px 28px rgba(0,0,0,.55); max-width:calc(100% - 16px);}
+.ink-pop[hidden]{display:none;}
+.ink-sizes{display:flex; gap:6px; align-items:center;}
+.ink-sizes button{width:42px; height:42px; border-radius:10px; border:1px solid var(--glass-border); background:var(--glass); display:flex; align-items:center; justify-content:center; color:var(--text-1);}
+.ink-sizes button.on{background:var(--cyan); color:#04101F; border-color:transparent;}
+.ink-sizes button i{display:block; border-radius:50%; background:currentColor; width:var(--d); height:var(--d);}
+#inkSV{display:block; width:220px; max-width:100%; height:140px; border-radius:8px; touch-action:none; cursor:crosshair;}
+#inkHue{width:100%; margin:10px 0 8px; height:22px; -webkit-appearance:none; appearance:none; border-radius:11px; background:linear-gradient(90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00); touch-action:none;}
+#inkHue::-webkit-slider-thumb{-webkit-appearance:none; width:26px; height:26px; border-radius:50%; background:#fff; border:3px solid #0b1226; box-shadow:0 0 0 1px #fff;}
+#inkHue::-moz-range-thumb{width:22px; height:22px; border-radius:50%; background:#fff; border:3px solid #0b1226;}
+.ink-presets{display:flex; gap:6px; flex-wrap:wrap;}
+.ink-presets button{width:26px; height:26px; border-radius:50%; border:2px solid rgba(255,255,255,.35); background:var(--c); padding:0;}
+.ink-hex{font-size:11px; color:var(--text-3); margin-top:8px; font-variant-numeric:tabular-nums;}
 canvas.ink-thumb{display:block; width:100%; background:#fffef9; border-radius:8px; border:1px solid var(--glass-border); margin:4px 0;}
 body.ink-open .composer-hide{display:none;}
 
@@ -455,6 +477,63 @@ body.mini-on .page:not(#page-player){padding-bottom:calc(24px + var(--nav-h) + v
 .scan-box{position:relative; display:none; border-radius:16px; overflow:hidden; background:#000; aspect-ratio:1/1; max-height:300px; margin:0 auto;}
 .scan-box video{width:100%; height:100%; object-fit:cover;}
 .scan-frame{position:absolute; inset:14%; border:2px solid var(--cyan); border-radius:14px; box-shadow:0 0 0 999px rgba(0,0,0,0.35);}
+
+#playerHost .progress-track{display:none;}
+.heat-strip{margin-top:6px; margin-bottom:2px;}
+/* ===== v2: player tools, review, courses, heat maps ===== */
+.pl-ctrl{display:grid; grid-template-columns:repeat(6,1fr); gap:5px; margin:6px 0 2px;}
+.pl-ctrl button{height:32px; border-radius:9px; border:1px solid var(--glass-border); background:var(--glass); color:var(--text-1); font-size:12px; font-weight:700; padding:0;}
+.pl-ctrl button.on{background:var(--cyan); color:#04101F; border-color:transparent;}
+.pl-ctrl button.half{background:var(--cyan-dim); color:var(--cyan); border-color:var(--cyan);}
+.heat-strip{display:block; width:100%; height:10px; margin-top:5px; border-radius:5px; cursor:pointer;}
+#page-player.composing .pl-ctrl,#page-player.composing .heat-strip{display:none;}
+.ctl-pop{position:fixed; z-index:45; background:#0f1a36; border:1px solid var(--glass-border); border-radius:12px; padding:8px; box-shadow:0 10px 28px rgba(0,0,0,.55);}
+.ctl-list{display:flex; flex-wrap:wrap; gap:6px; max-width:260px;}
+.ctl-list button{min-width:56px; height:36px; border-radius:9px; border:1px solid var(--glass-border); background:var(--glass); color:var(--text-1); font-weight:700;}
+.ctl-list button.on{background:var(--cyan); color:#04101F; border-color:transparent;}
+.mini-link{border:0; background:none; color:var(--cyan); font-weight:700; font-size:inherit; padding:0 2px; cursor:pointer;}
+.log-row{display:flex; align-items:center; gap:10px; font-size:12px; padding:7px 4px; border-bottom:1px solid var(--glass-border); font-variant-numeric:tabular-nums;}
+.log-row .log-day{margin-left:auto; color:var(--text-3);}
+.cz-chip{background:rgba(250,204,21,.18); border-bottom:2px solid #facc15; border-radius:4px; padding:0 3px;}
+.cz-blank{background:var(--cyan-dim); color:var(--cyan); border-radius:6px; padding:0 6px; font-weight:700;}
+.cz-ans{background:rgba(74,222,128,.2); color:#86efac; border-radius:6px; padding:0 4px; font-weight:700;}
+.card-hr{border:0; border-top:1px dashed var(--glass-border); margin:12px 0;}
+#reviewOverlay{position:fixed; inset:0; z-index:60; background:var(--bg, #060b1a); display:none; flex-direction:column; padding:calc(10px + var(--safe-top)) 16px calc(16px + var(--safe-bottom)); overflow-y:auto;}
+#reviewOverlay.open{display:flex;}
+.rv-top{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
+#rvBody{flex:1; max-width:640px; width:100%; margin:0 auto; display:flex; flex-direction:column;}
+.rv-src{font-size:11.5px; color:var(--text-3); margin-bottom:10px; line-height:1.5;}
+.rv-card{background:var(--glass); border:1px solid var(--glass-border); border-radius:var(--radius-md); padding:22px 18px; font-size:19px; line-height:1.55; min-height:160px; word-break:break-word;}
+.rv-grades{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:14px;}
+.rv-grades button{height:58px; border-radius:12px; border:1px solid var(--glass-border); background:var(--glass); color:var(--text-1); font-weight:700; font-size:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;}
+.rv-grades button small{font-size:10.5px; font-weight:600; opacity:.7;}
+.rv-grades .g0{border-color:#f87171;} .rv-grades .g1{border-color:#fb923c;} .rv-grades .g2{border-color:#4ade80;} .rv-grades .g3{border-color:#38bdf8;}
+.rv-done{text-align:center; margin:auto; padding:40px 0;}
+.rv-stats{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; text-align:center;}
+.rv-stats b{display:block; font-size:20px;} .rv-stats span{font-size:10.5px; color:var(--text-3);}
+body.rv-open{overflow:hidden;}
+.vprog{height:4px; border-radius:99px; background:rgba(255,255,255,.1); overflow:hidden; margin-top:6px;}
+.vprog i{display:block; height:100%; background:linear-gradient(90deg,var(--cyan),var(--blue)); border-radius:99px;}
+.vprog.big{height:8px;}
+.course-row{display:flex; align-items:center; gap:8px; padding:8px 2px; border-bottom:1px solid var(--glass-border); font-size:13px;}
+.course-row .cr-n{flex:0 0 26px; text-align:center; color:var(--text-3); font-weight:700;}
+.course-row .cr-t{flex:1 1 auto; min-width:0; word-break:break-word;}
+.course-row .cr-t small{display:block; color:var(--text-3); font-size:11px;}
+.course-row.locked{opacity:.5;}
+.course-row .mini-btns{flex:0 0 auto; display:flex; gap:4px;}
+.mini-btns button.on{background:var(--cyan); color:#04101F;}
+.ch-row{padding:8px 0; border-bottom:1px solid var(--glass-border);} .ch-row small{display:block; margin-top:4px; color:var(--text-3); font-size:11px;}
+.heatmap{display:grid; grid-auto-flow:column; grid-template-rows:repeat(7,auto); gap:3px;}
+.heat-months{display:grid; gap:3px; font-size:10px; color:var(--text-3); margin-bottom:3px; height:12px;}
+.hm{display:block; aspect-ratio:1; border-radius:3px; background:rgba(255,255,255,.07);}
+.hm.none{background:transparent;}
+.hm.l1{background:rgba(34,211,238,.28);} .hm.l2{background:rgba(34,211,238,.5);} .hm.l3{background:rgba(34,211,238,.75);} .hm.l4{background:#22d3ee;}
+.heat-legend{display:flex; align-items:center; gap:4px; justify-content:flex-end; font-size:10px; color:var(--text-3); margin-top:6px;}
+.heat-legend .hm{width:11px; aspect-ratio:1;}
+body.thumbs-blur .video-card .thumb{filter:blur(14px) saturate(.6); }
+body.thumbs-off .video-card .thumb{display:none;}
+.local-ic{position:absolute; left:4px; bottom:4px; font-size:14px; background:rgba(0,0,0,.55); border-radius:6px; padding:1px 4px;}
+video#ytMount{background:#000; object-fit:contain;}
 </style>
 </head>
 <body>
@@ -488,6 +567,10 @@ body.mini-on .page:not(#page-player){padding-bottom:calc(24px + var(--nav-h) + v
       <div class="quick-action" data-nav="page-channels"><div class="qi">📡</div><div class="qt">Channels</div><div class="qd">Manage subscriptions</div></div>
       <div class="quick-action" id="qaAdd"><div class="qi">➕</div><div class="qt">Add Channel</div><div class="qd">Track a new source</div></div>
       <div class="quick-action" data-nav="page-settings"><div class="qi">⚙️</div><div class="qt">Settings</div><div class="qd">Backup & preferences</div></div>
+      <div class="quick-action" id="qaReview"><div class="qi">🧠</div><div class="qt">Review</div><div class="qd" id="qaReviewD">Flashcards from notes</div></div>
+      <div class="quick-action" id="qaCourses"><div class="qi">🎓</div><div class="qt">Courses</div><div class="qd">Paths and progress</div></div>
+      <div class="quick-action" id="qaOne"><div class="qi">🎯</div><div class="qt">One video</div><div class="qd">Study a single link</div></div>
+      <div class="quick-action" id="qaLocal"><div class="qi">📂</div><div class="qt">Local file</div><div class="qd">Your own video or audio</div></div>
     </div>
     <button class="btn block" style="margin-top:12px;" id="exportBackupBtn">⬇️ Export Backup</button>
 
@@ -527,16 +610,27 @@ body.mini-on .page:not(#page-player){padding-bottom:calc(24px + var(--nav-h) + v
       </div>
       <div class="player-slot" id="playerSlot"><div class="slot-hint">Pick a video from Home, Videos or your Library to start watching</div></div>
       <div class="progress-track"><div class="progress-fill" id="playerProgressFill" style="width:0%"></div></div>
+      <canvas class="heat-strip" id="heatStrip" title="Brighter = watched more. Tap to jump."></canvas>
       <div class="pl-compose">
         <div class="pl-compose-top">
           <button class="ts-chip" id="noteTsChip" title="This time is attached to your note. Tap to set it to now.">⏱ 0:00</button>
           <label class="pt-chip"><input type="checkbox" id="pauseTypingChk"> Pause while typing</label>
+          <button class="ts-chip" id="btnCloze" title="Hide the selected words as a flashcard">[…]</button>
+          <button class="ts-chip" id="btnTpl" title="Note templates">📋</button>
         </div>
         <div class="note-compose">
           <textarea id="noteInput" rows="1" placeholder="Write a note…"></textarea>
           <button class="btn sm" id="btnInk" title="Handwrite a note (Apple Pencil)" aria-label="Handwrite">✍️</button>
           <button class="btn primary sm" id="noteAddBtn">Add</button>
         </div>
+      </div>
+      <div class="pl-ctrl" id="plCtrl">
+        <button id="ctlBack10" title="Back 10 seconds" aria-label="Back 10 seconds">⏪10</button>
+        <button id="ctlBack5" title="Back 5 seconds" aria-label="Back 5 seconds">−5</button>
+        <button id="ctlFwd5" title="Forward 5 seconds" aria-label="Forward 5 seconds">+5</button>
+        <button id="ctlFwd10" title="Forward 10 seconds" aria-label="Forward 10 seconds">10⏩</button>
+        <button id="ctlSpeed" title="Playback speed">1×</button>
+        <button id="ctlLoop" title="Loop a section">A–B</button>
       </div>
       <div class="pl-actions" id="plActions">
         <button class="pl-act" id="btnFav" title="Favorite" aria-label="Favorite"><span class="ic">♥</span><span class="lbl">Favorite</span></button>
@@ -552,11 +646,12 @@ body.mini-on .page:not(#page-player){padding-bottom:calc(24px + var(--nav-h) + v
       <div class="pl-tabs">
         <button class="pl-tab active" data-ptab="notes">📝 Notes<span class="cnt" id="cntNotes"></span></button>
         <button class="pl-tab" data-ptab="cps">📍 Checkpoints<span class="cnt" id="cntCps"></span></button>
+        <button class="pl-tab" id="btnCourseAdd" style="flex:0 0 44px;" title="Add this video to a course" aria-label="Add to course">🎓</button>
         <button class="pl-tab" id="btnExportVideo" style="flex:0 0 44px;" title="Export notes of this video" aria-label="Export">⬇️</button>
       </div>
       <div class="pl-scroll">
         <div id="ptab-notes"><div id="noteList"></div></div>
-        <div id="ptab-cps" hidden><div id="checkpointList"></div></div>
+        <div id="ptab-cps" hidden><div id="checkpointList"></div><div id="watchLog"></div></div>
       </div>
     </div>
   </div>
@@ -568,10 +663,15 @@ body.mini-on .page:not(#page-player){padding-bottom:calc(24px + var(--nav-h) + v
       <div class="tab-chip active" data-lib="history">History</div>
       <div class="tab-chip" data-lib="favorites">Favorites</div>
       <div class="tab-chip" data-lib="later">Watch Later</div>
+      <div class="tab-chip" data-lib="progress">In progress</div>
       <div class="tab-chip" data-lib="completed">Completed</div>
       <div class="tab-chip" data-lib="notes">Notes</div>
       <div class="tab-chip" data-lib="pinned">Pinned</div>
       <div class="tab-chip" data-lib="categories">Categories</div>
+      <div class="tab-chip" data-lib="review">🧠 Review</div>
+      <div class="tab-chip" data-lib="courses">🎓 Courses</div>
+      <div class="tab-chip" data-lib="matrix">Matrix</div>
+      <div class="tab-chip" data-lib="stats">📊 Stats</div>
     </div>
     <div id="libraryContent"></div>
     <div class="section-title">Manage</div>
@@ -603,6 +703,16 @@ body.mini-on .page:not(#page-player){padding-bottom:calc(24px + var(--nav-h) + v
         <option value="10">Newest 10</option><option value="20">Newest 20</option>
       </select>
       <p style="font-size:12px; color:var(--text-2); line-height:1.5; margin-top:8px;">Only the newest videos from each channel appear on Home and in the Video Feed. Nothing is deleted, and your library is not affected.</p>
+    </div>
+
+    <div class="card" style="margin-bottom:14px;">
+      <div class="field-label">Focus filters</div>
+      <div style="font-size:12px;color:var(--text-2);margin-bottom:6px;">Hide uploads whose title contains any of these words (separate with commas):</div>
+      <textarea id="setKeywords" rows="2" placeholder="vlog, q&a, announcement, reaction" style="min-height:56px;"></textarea>
+      <div style="font-size:11px;color:var(--text-3);margin:6px 0 12px;" id="hiddenCount"></div>
+      <div style="font-size:12px;color:var(--text-2);margin-bottom:6px;">Thumbnails</div>
+      <select id="setThumbMode"><option value="normal">Show thumbnails</option><option value="blur">Blur thumbnails (less clickbait)</option><option value="text">Titles only</option></select>
+      <label class="set-row" style="margin-top:12px;"><span>When I resume after a break, start a few seconds earlier</span><input type="checkbox" id="setRewindChk"></label>
     </div>
 
     <div class="card" style="margin-bottom:14px;">
@@ -720,31 +830,29 @@ body.mini-on .page:not(#page-player){padding-bottom:calc(24px + var(--nav-h) + v
 <!-- ============ SHEETS ============ -->
 <div id="inkEditor" role="dialog" aria-label="Handwriting">
   <div class="ink-bar">
-    <button class="ink-btn" id="inkCancel" title="Close">✕</button>
-    <button class="ink-btn" id="inkUndo" title="Undo">↶</button>
-    <button class="ink-btn" id="inkRedo" title="Redo">↷</button>
+    <button class="ink-btn" id="inkCancel" title="Close" aria-label="Close">✕</button>
+    <button class="ink-btn" id="inkUndo" title="Undo" aria-label="Undo">↶</button>
+    <button class="ink-btn" id="inkRedo" title="Redo" aria-label="Redo">↷</button>
     <span class="ink-sep"></span>
-    <button class="ink-btn on" data-tool="pen" title="Pen">✏️</button>
-    <button class="ink-btn" data-tool="hl" title="Highlighter">🖍️</button>
-    <button class="ink-btn" data-tool="eraser" title="Eraser">🧽</button>
-    <button class="ink-btn" data-tool="hand" title="Scroll / move">✋</button>
+    <button class="ink-btn on" data-tool="pen" title="Pen (tap again for size)" aria-label="Pen">✏️</button>
+    <button class="ink-btn" data-tool="hl" title="Highlighter (tap again for size)" aria-label="Highlighter">🖍️</button>
+    <button class="ink-btn" data-tool="eraser" title="Eraser" aria-label="Eraser">🧽</button>
+    <button class="ink-btn" data-tool="hand" title="Scroll / move" aria-label="Scroll">✋</button>
     <span class="ink-sep"></span>
-    <button class="ink-btn ink-sw on" data-color="#1a1a1a" style="--c:#1a1a1a" aria-label="Black"></button>
-    <button class="ink-btn ink-sw" data-color="#1d4ed8" style="--c:#1d4ed8" aria-label="Blue"></button>
-    <button class="ink-btn ink-sw" data-color="#dc2626" style="--c:#dc2626" aria-label="Red"></button>
-    <button class="ink-btn ink-sw" data-color="#15803d" style="--c:#15803d" aria-label="Green"></button>
-    <button class="ink-btn ink-sw" data-color="#7c3aed" style="--c:#7c3aed" aria-label="Purple"></button>
-    <span class="ink-sep"></span>
-    <button class="ink-btn ink-sz" data-size="2" title="Thin"><i style="--d:3px"></i></button>
-    <button class="ink-btn ink-sz on" data-size="3.5" title="Medium"><i style="--d:6px"></i></button>
-    <button class="ink-btn ink-sz" data-size="7" title="Thick"><i style="--d:10px"></i></button>
-    <span class="ink-sep"></span>
-    <button class="ink-btn" id="inkPaper" title="Paper: lines / grid / plain">▤</button>
-    <button class="ink-btn" id="inkAddPage" title="Add more space">＋</button>
-    <button class="ink-btn" id="inkClear" title="Clear page">🗑</button>
-    <button class="ink-btn" id="inkFinger" title="Fingers can draw">☝️</button>
-    <button class="ink-btn" id="inkFull" title="Full screen (video floats)">⛶</button>
+    <button class="ink-btn" id="inkColorBtn" title="Color" aria-label="Color"><i class="ink-swatch" id="inkSwatch"></i></button>
+    <button class="ink-btn" id="inkPaper" title="Paper: lines / grid / plain" aria-label="Paper">▤</button>
+    <button class="ink-btn" id="inkAddPage" title="Add more space" aria-label="Add space">＋</button>
+    <button class="ink-btn" id="inkClear" title="Clear page" aria-label="Clear">🗑</button>
+    <button class="ink-btn" id="inkFinger" title="Fingers can draw" aria-label="Finger drawing">☝️</button>
+    <button class="ink-btn" id="inkFull" title="Full screen (video floats)" aria-label="Full screen">⛶</button>
     <button class="ink-btn save" id="inkSave">Save</button>
+  </div>
+  <div class="ink-pop" id="inkSizePop" hidden></div>
+  <div class="ink-pop" id="inkColorPop" hidden>
+    <canvas id="inkSV" width="220" height="140"></canvas>
+    <input type="range" id="inkHue" min="0" max="360" step="1" value="0" aria-label="Hue">
+    <div class="ink-presets" id="inkPresets"></div>
+    <div class="ink-hex" id="inkHex">#1a1a1a</div>
   </div>
   <div class="ink-wrap" id="inkWrap"><canvas id="inkCanvas"></canvas></div>
   <div class="ink-foot"><span id="inkTsLabel">⏱ 0:00</span><span>Saved with this time. Two fingers scroll.</span></div>
@@ -770,6 +878,15 @@ body.mini-on .page:not(#page-player){padding-bottom:calc(24px + var(--nav-h) + v
   </div>
 </div>
 
+<input type="file" id="localFileInput" accept="video/*,audio/*,.mp4,.m4a,.mp3,.webm,.mov,.mkv" hidden>
+<div class="sheet-backdrop" id="sheetOne"><div class="sheet"><div class="sheet-handle"></div><h3>Study one video</h3>
+  <div class="field-label">Paste a YouTube link. It opens in the player without adding the channel or filling your feed.</div>
+  <input type="text" id="oneInput" placeholder="https://youtu.be/…" autocapitalize="off" autocorrect="off" spellcheck="false">
+  <button class="btn primary block" style="margin-top:14px;" id="oneGo">Open</button></div></div>
+<div class="sheet-backdrop" id="sheetTpl"><div class="sheet"><div class="sheet-handle"></div><h3>Note templates</h3><div id="tplList" style="margin-top:8px;"></div></div></div>
+<div class="sheet-backdrop" id="sheetCourse"><div class="sheet" style="max-height:88dvh;overflow-y:auto;"><div class="sheet-handle"></div><div id="courseBody"></div></div></div>
+<div class="sheet-backdrop" id="sheetCoursePick"><div class="sheet"><div class="sheet-handle"></div><h3>Add to a course</h3><div id="coursePickBody" style="margin-top:8px;"></div></div></div>
+<div id="reviewOverlay" role="dialog" aria-label="Review"><div class="rv-top"><button class="ink-btn" id="rvClose" aria-label="Close" style="width:38px;">✕</button><div style="font-weight:700;">🧠 Review</div><div id="rvCount" style="color:var(--text-3);font-size:12px;min-width:60px;text-align:right;"></div></div><div id="rvBody"></div></div>
 <div class="sheet-backdrop" id="sheetAddChannel">
   <div class="sheet">
     <div class="sheet-handle"></div>
@@ -858,6 +975,7 @@ function defaultDB(){
     checkpoints:{},         // videoId -> [{id,label,seconds}]
     resume:{},              // videoId -> {seconds, updatedAt}
     categories:{},          // name -> [videoIds]
+    loops:{}, reviews:{}, courses:{}, sessions:{}, activity:{}, matrix:{},
     settings:{ proxy:0, customProxy:"" }
   };
 }
@@ -876,6 +994,9 @@ function loadDB(){
   return d;
 }
 let DB = loadDB();
+for(const k of ["loops","reviews","courses","sessions","activity","matrix"]) if(!DB[k] || typeof DB[k] !== "object" || Array.isArray(DB[k])) DB[k] = {};
+const DEV = (function(){ try{ let d = localStorage.getItem("studytube_dev"); if(!d){ d = Math.random().toString(36).slice(2,8) + Date.now().toString(36).slice(-3); localStorage.setItem("studytube_dev", d); } return d.replace(/[^\w-]/g,"").slice(0,16) || "dev"; }catch(e){ return "dev" + Math.random().toString(36).slice(2,6); } })();
+function dayKey(ms){ const d = new Date(ms); return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); }
 const SYNC_STORE = "studytube_sync_v1";
 function loadSync(){
   try{
@@ -1210,7 +1331,8 @@ document.querySelectorAll('[data-nav]').forEach(el=>{
 ============================================================ */
 function limitedVideos(){
   const lim = parseInt(DB.settings.perChannelLimit, 10) || 0;
-  const list = Object.values(DB.videos).sort((a,b)=> new Date(b.published)-new Date(a.published));
+  const kws = hiddenKeywords();
+  const list = Object.values(DB.videos).filter(v=>!v.single && !hiddenByKeyword(v, kws)).sort((a,b)=> new Date(b.published)-new Date(a.published));
   if(!lim) return list;
   const n = {};
   return list.filter(v=>{ const k = v.channelId || v.channelTitle || "?"; n[k] = (n[k]||0) + 1; return n[k] <= lim; });
@@ -1245,6 +1367,7 @@ function renderHome(){
   }
   attachVideoCardEvents(contEl);
   attachVideoCardEvents(recEl);
+  try{ const n = reviewDueCount(); document.getElementById('qaReviewD').textContent = n ? n + ' card' + (n === 1 ? '' : 's') + ' due' : 'Flashcards from notes'; }catch(e){}
 }
 
 /* ============================================================
@@ -1255,10 +1378,11 @@ function videoCardHtml(v, opts={}){
   const isNew = !v.seen;
   const progress = opts.progress;
   return `<div class="video-card" data-vid="${v.videoId}">
-    <div class="thumb" style="background-image:url('${v.thumb}')">${isNew?'<div class="new-dot"></div>':''}</div>
+    <div class="thumb" style="background-image:url('${v.thumb}')">${isNew?'<div class="new-dot"></div>':''}${v.local?'<div class="local-ic">🎞</div>':''}</div>
     <div class="meta">
       <div class="t">${escapeHtml(v.title)}</div>
       <div class="c">${escapeHtml(v.channelTitle||'')} · ${timeAgo(v.published)}${progress?' · resume '+fmtSecs(progress):''}</div>
+      ${(()=>{ const pp = progressPct(v.videoId); return (pp !== null && pp > 0 && pp < 95 && !DB.completed.includes(v.videoId)) ? '<div class="vprog"><i style="width:'+pp+'%"></i></div>' : ''; })()}
       <div class="row-actions">
         <button data-act="watch">▶ Watch</button>
         <button data-act="yt">YouTube</button>
@@ -1397,6 +1521,8 @@ function renderBasicPlayer(videoId, startAt){
   toast('Basic player: resume and note timestamps are off');
 }
 function loadVideoInPlayer(videoId, startAt){
+  if(DB.videos[videoId] && DB.videos[videoId].local){ loadLocalVideo(videoId, startAt); return; }
+  if(ytPlayer && ytPlayer.__local) teardownLocal();
   if(basicMode){ renderBasicPlayer(videoId, startAt); return; }
   clearTimeout(apiWatchdog);
   apiWatchdog = setTimeout(()=>{
@@ -1425,9 +1551,10 @@ function loadVideoInPlayer(videoId, startAt){
   });
 }
 
-function openPlayer(videoId){
+function openPlayer(videoId, atOverride){
   const v = DB.videos[videoId];
   if(!v) return;
+  segClose(); lastT = 0; firedPause = null;
   currentVideoId = videoId;
   v.seen = true;
   if(!DB.history.includes(videoId)) DB.history.unshift(videoId);
@@ -1446,16 +1573,22 @@ function openPlayer(videoId){
   renderCheckpoints();
   renderNotes();
 
-  const startAt = (DB.resume[videoId] && DB.resume[videoId].seconds) || 0;
+  let startAt = (DB.resume[videoId] && DB.resume[videoId].seconds) || 0;
+  if(typeof atOverride === 'number' && atOverride >= 0) startAt = atOverride;
+  else if(startAt > 10 && DB.settings.rewind !== false){
+    const idle = Date.now() - (Date.parse(DB.resume[videoId].updatedAt) || 0);
+    if(idle > 15 * 60000) startAt = Math.max(0, startAt - 7);   // pick up a few seconds earlier to regain context
+  }
+  updateLoopBtn(); renderWatchLog();
   goToPage('page-player');
   hidePlayerFallback();
   loadVideoInPlayer(videoId, startAt);
 }
 function onPlayerStateChange(e){
   if(!ytPlayer || !currentVideoId) return;
-  if(e.data===YT.PlayerState.PLAYING) startResumePolling();
+  if(e.data===1){ startResumePolling(); applyRate(); }
   updateMiniPlayIcon(e.data);
-  if(e.data===YT.PlayerState.PAUSED || e.data===YT.PlayerState.ENDED){ saveResumePosition(); scheduleSync(6000); }
+  if(e.data===2 || e.data===0){ saveResumePosition(); segClose(); scheduleSync(6000); }
 }
 function startResumePolling(){
   clearInterval(resumePollTimer);
@@ -1467,6 +1600,7 @@ function saveResumePosition(){
     const t = ytPlayer.getCurrentTime();
     const dur = ytPlayer.getDuration() || 1;
     DB.resume[currentVideoId] = {seconds:t, updatedAt:new Date().toISOString()};
+    if(dur > 1) DB.resume[currentVideoId].dur = Math.round(dur);
     document.getElementById('playerProgressFill').style.width = Math.min(100,(t/dur)*100)+'%';
     if(t/dur > 0.92 && !DB.completed.includes(currentVideoId)){
       DB.completed.push(currentVideoId);
@@ -1511,8 +1645,13 @@ function renderCheckpoints(){
   const el = document.getElementById('checkpointList');
   const cps = (currentVideoId && DB.checkpoints[currentVideoId]) || [];
   updatePlayerCounts();
+  renderWatchLog();
   if(cps.length===0){ el.innerHTML = '<div class="pl-empty">No checkpoints yet.<br>Tap 📍 while watching to bookmark a moment.</div>'; return; }
-  el.innerHTML = cps.map(c=>`<div class="checkpoint-row"><span>📍 ${c.label}</span><span class="mini-btns"><button data-jump="${c.seconds}">Jump</button><button data-del="${c.id}">✕</button></span></div>`).join('');
+  el.innerHTML = cps.map(c=>`<div class="checkpoint-row"><span>📍 ${c.label}${c.pause?' <small style="color:#fb923c">pauses here</small>':''}</span><span class="mini-btns"><button data-pause="${c.id}" class="${c.pause?'on':''}" title="Pause the video here to reflect">⏸</button><button data-jump="${c.seconds}">Jump</button><button data-del="${c.id}">✕</button></span></div>`).join('');
+  el.querySelectorAll('[data-pause]').forEach(b=>b.addEventListener('click', ()=>{
+    const c = DB.checkpoints[currentVideoId].find(x=>x.id===b.dataset.pause);
+    if(c){ c.pause = !c.pause; if(!c.pause) delete c.pause; saveNow(); renderCheckpoints(); toast(c.pause ? 'The video will pause here' : 'Pause point removed'); }
+  }));
   el.querySelectorAll('[data-jump]').forEach(b=>b.addEventListener('click', ()=>{ if(ytPlayer && ytPlayer.seekTo) ytPlayer.seekTo(parseFloat(b.dataset.jump), true); }));
   el.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click', ()=>{
     DB.checkpoints[currentVideoId] = DB.checkpoints[currentVideoId].filter(c=>c.id!==b.dataset.del);
@@ -1541,8 +1680,12 @@ function renderNotes(){
     <div class="note-item" data-nid="${n.id}">
       <div class="n-head"><span class="n-ts" data-jump="${n.ts}">${fmtSecs(n.ts)}</span><span style="font-size:10px;color:var(--text-3);">${timeAgo(n.createdAt)}</span></div>
       ${noteBodyHtml(currentVideoId,n)}
-      <div class="n-actions"><span data-pin="${n.id}">${n.pinned?'★ Pinned':'☆ Pin'}</span>${n.ink?`<span data-inkedit="${n.id}">✍️ Edit</span>`:''}<span data-del="${n.id}">Delete</span></div>
+      <div class="n-actions"><span data-pin="${n.id}">${n.pinned?'★ Pinned':'☆ Pin'}</span>${n.ink?`<span data-inkedit="${n.id}">✍️ Edit</span>`:''}<span data-link="${n.ts}">🔗 Link</span><span data-del="${n.id}">Delete</span></div>
     </div>`).join('');
+  el.querySelectorAll('[data-link]').forEach(b=>b.addEventListener('click', ()=>{
+    const u = deepLinkFor(currentVideoId, parseFloat(b.dataset.link));
+    (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(()=>toast('App link copied. It opens this moment.'), ()=>prompt('Copy this link', u));
+  }));
   paintInkThumbs(el);
   el.querySelectorAll('[data-inkedit]').forEach(b=>b.addEventListener('click', ()=>openInk(b.dataset.inkedit)));
   el.querySelectorAll('[data-jump]').forEach(b=>b.addEventListener('click', ()=>{ if(ytPlayer && ytPlayer.seekTo) ytPlayer.seekTo(parseFloat(b.dataset.jump), true); }));
@@ -1602,6 +1745,11 @@ document.querySelectorAll('#libTabs .tab-chip').forEach(chip=>{
 function renderLibrary(){ renderLibraryInner(); paintInkThumbs(document.getElementById('libraryContent')); }
 function renderLibraryInner(){
   const el = document.getElementById('libraryContent');
+  if(libTab==='progress'){ renderProgressTab(el); return; }
+  if(libTab==='review'){ renderReviewTab(el); return; }
+  if(libTab==='courses'){ renderCoursesTab(el); return; }
+  if(libTab==='matrix'){ renderMatrixTab(el); return; }
+  if(libTab==='stats'){ renderStatsTab(el); return; }
   let ids = [];
   if(libTab==='history') ids = DB.history;
   else if(libTab==='favorites') ids = DB.favorites;
@@ -1666,6 +1814,7 @@ function renderLibraryInner(){
 
 /* Library clear/export */
 document.getElementById('libClearTabBtn').addEventListener('click', ()=>{
+  if(['progress','review','courses','matrix','stats'].includes(libTab)){ toast('Nothing to clear in this tab'); return; }
   if(!confirm('Clear all items in "'+libTab+'"? This cannot be undone.')) return;
   if(libTab==='history'){ DB.history = []; DB.historyAt = {}; }
   else if(libTab==='favorites') DB.favorites = [];
@@ -1686,7 +1835,7 @@ document.getElementById('libClearEmptyBtn').addEventListener('click', ()=>{
 });
 document.getElementById('libClearAllBtn').addEventListener('click', ()=>{
   if(!confirm('Erase ALL library data (history, favorites, notes, everything)? This cannot be undone.' + (SYNC.key ? '\n\nSync is on, so this will also erase it on your other devices.' : ''))) return;
-  DB.history=[]; DB.historyAt={}; DB.favorites=[]; DB.watchLater=[]; DB.completed=[]; DB.notes={}; DB.checkpoints={}; DB.categories={}; DB.resume={};
+  DB.history=[]; DB.historyAt={}; DB.favorites=[]; DB.watchLater=[]; DB.completed=[]; DB.notes={}; DB.checkpoints={}; DB.categories={}; DB.resume={}; DB.reviews={}; DB.courses={}; DB.sessions={}; DB.activity={}; DB.matrix={}; DB.loops={};
   saveNow(); renderLibrary(); renderHome(); toast('Library erased');
 });
 
@@ -2081,15 +2230,34 @@ function syncFlatten(){
   }
   for(const [vid,arr] of Object.entries(DB.checkpoints)){
     if(!VID_RE.test(vid) || !Array.isArray(arr)) continue;
-    for(const c of arr) if(c && typeof c.id === "string") add("c|"+vid+"|"+c.id, {label:c.label, seconds:c.seconds}, vid);
+    for(const c of arr) if(c && typeof c.id === "string") add("c|"+vid+"|"+c.id, {label:c.label, seconds:c.seconds, ...(c.pause ? {pause:1} : {})}, vid);
   }
   [["f",DB.favorites],["w",DB.watchLater],["d",DB.completed]].forEach(([p,list])=>{
     list.forEach((vid,i)=>{ if(VID_RE.test(vid)) add(p+"|"+vid, 1, vid, p==="d" ? undefined : i); });
   });
   DB.history.forEach(vid=>{ if(VID_RE.test(vid)) add("h|"+vid, DB.historyAt[vid], vid); });
   for(const [vid,r] of Object.entries(DB.resume)){
-    if(VID_RE.test(vid) && r && typeof r.seconds === "number") add("r|"+vid, {seconds:Math.round(r.seconds*10)/10, updatedAt:r.updatedAt}, vid);
+    if(VID_RE.test(vid) && r && typeof r.seconds === "number") add("r|"+vid, {seconds:Math.round(r.seconds*10)/10, updatedAt:r.updatedAt, ...(r.dur > 0 ? {dur:Math.round(r.dur)} : {})}, vid);
   }
+  for(const k in DB.reviews){
+    const p = k.split("|"), s = DB.reviews[k];
+    if(p.length !== 3 || !VID_RE.test(p[0]) || !s || !(DB.notes[p[0]] || []).some(n=>n.id === p[1])) continue;
+    add("q|"+k, {due:Math.round(s.due), ivl:s.ivl, ease:Math.round(s.ease*100)/100, reps:s.reps, lapses:s.lapses, last:Math.round(s.last || 0)});
+  }
+  for(const [id,c] of Object.entries(DB.courses)){
+    if(!/^[\w-]{1,40}$/.test(id) || !c) continue;
+    add("u|"+id, {name:c.name, vids:(c.vids || []).filter(v=>VID_RE.test(v)), lock:!!c.lock, createdAt:c.createdAt}, undefined);
+    (c.vids || []).forEach(v=>{ if(VID_RE.test(v)) refs.add(v); });
+  }
+  for(const [vid,arr] of Object.entries(DB.sessions)){
+    if(!VID_RE.test(vid) || !Array.isArray(arr)) continue;
+    for(const s of arr) if(s && /^[\w-]{1,40}$/.test(s.id)) add("z|"+vid+"|"+s.id, {s:s.s, e:s.e, at:s.at}, vid);
+  }
+  for(const [day,o] of Object.entries(DB.activity)){
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(day) || !o) continue;
+    for(const dv in o) if(/^[\w-]{1,16}$/.test(dv) && o[dv] > 0) add("a|"+day+"|"+dv, Math.round(o[dv]));
+  }
+  for(const [vid,q] of Object.entries(DB.matrix)) if(VID_RE.test(vid) && /^(do|plan|quick|drop)$/.test(q)) add("m|"+vid, q, vid);
   for(const [name,arr] of Object.entries(DB.categories)){
     const en = encodeURIComponent(name);
     add("G|"+en, 1);
@@ -2097,7 +2265,7 @@ function syncFlatten(){
   }
   refs.forEach(vid=>{
     const v = DB.videos[vid];
-    if(v) f["v|"+vid] = {channelId:v.channelId||"", channelTitle:v.channelTitle||"", title:v.title||"", published:v.published||""};
+    if(v) f["v|"+vid] = {channelId:v.channelId||"", channelTitle:v.channelTitle||"", title:v.title||"", published:v.published||"", ...(v.local ? {local:1} : {}), ...(v.single ? {single:1} : {})};
   });
   return {f, hint};
 }
@@ -2146,9 +2314,10 @@ function syncSame(a, b){
 /* ---- rebuild the library from the merged map (validates everything that came from the cloud) ---- */
 function clampStr(x, n){ return typeof x === "string" ? x.slice(0,n) : ""; }
 function syncApply(map){
-  const snap = ()=>JSON.stringify([DB.notes,DB.checkpoints,DB.favorites,DB.watchLater,DB.completed,DB.history,DB.resume,DB.categories,Object.keys(DB.videos).length]);
+  const snap = ()=>JSON.stringify([DB.notes,DB.checkpoints,DB.favorites,DB.watchLater,DB.completed,DB.history,DB.resume,DB.categories,Object.keys(DB.videos).length,DB.reviews,DB.courses,DB.sessions,DB.activity,DB.matrix]);
   const before = snap();
   const notes = {}, cps = {}, favs = [], laters = [], dones = [], hist = [], resume = {}, cats = {}, meta = {};
+  const reviews = {}, courses = {}, sessions = {}, activity = {}, matrix = {};
   for(const k in map){
     const e = map[k];
     if(!e || e.d || typeof k !== "string" || k.length > 400) continue;
@@ -2156,19 +2325,29 @@ function syncApply(map){
     if(c === "n" && parts.length === 3 && VID_RE.test(parts[1]) && /^[\w-]{1,40}$/.test(parts[2]) && v && typeof v === "object"){
       (notes[parts[1]] = notes[parts[1]] || []).push({id:parts[2], text:clampStr(v.text,500000), ts:Number.isFinite(v.ts)?v.ts:0, pinned:!!v.pinned, createdAt:clampStr(v.createdAt,40), ...(sanitizeInk(v.ink) ? {ink:sanitizeInk(v.ink)} : {})});
     }else if(c === "c" && parts.length === 3 && VID_RE.test(parts[1]) && /^[\w-]{1,40}$/.test(parts[2]) && v && Number.isFinite(v.seconds)){
-      (cps[parts[1]] = cps[parts[1]] || []).push({id:parts[2], label:clampStr(v.label,60), seconds:Math.max(0,v.seconds)});
+      (cps[parts[1]] = cps[parts[1]] || []).push({id:parts[2], label:clampStr(v.label,60), seconds:Math.max(0,v.seconds), ...(v.pause ? {pause:true} : {})});
     }else if((c === "f" || c === "w" || c === "d") && parts.length === 2 && VID_RE.test(parts[1])){
       (c==="f"?favs:c==="w"?laters:dones).push({vid:parts[1], t:e.t});
     }else if(c === "h" && parts.length === 2 && VID_RE.test(parts[1]) && Number.isFinite(v)){
       hist.push({vid:parts[1], t:v});
     }else if(c === "r" && parts.length === 2 && VID_RE.test(parts[1]) && v && Number.isFinite(v.seconds)){
-      resume[parts[1]] = {seconds:Math.max(0,v.seconds), updatedAt:clampStr(v.updatedAt,40)};
+      resume[parts[1]] = {seconds:Math.max(0,v.seconds), updatedAt:clampStr(v.updatedAt,40), ...(Number.isFinite(v.dur) && v.dur > 0 ? {dur:Math.round(v.dur)} : {})};
     }else if(c === "G" && parts.length === 2){
       try{ const n = decodeURIComponent(parts[1]).slice(0,80); if(n) cats[n] = cats[n] || []; }catch(err){}
     }else if(c === "g" && parts.length === 3 && VID_RE.test(parts[2])){
       try{ const n = decodeURIComponent(parts[1]).slice(0,80); if(n) (cats[n] = cats[n] || []).push({vid:parts[2], t:e.t}); }catch(err){}
     }else if(c === "v" && parts.length === 2 && VID_RE.test(parts[1]) && v && typeof v === "object"){
       meta[parts[1]] = v;
+    }else if(c === "q" && parts.length === 4 && VID_RE.test(parts[1]) && /^[\w-]{1,40}$/.test(parts[2]) && /^(\d{1,2}|q\d{1,2})$/.test(parts[3]) && v && Number.isFinite(v.due) && Number.isFinite(v.ease)){
+      reviews[parts[1]+"|"+parts[2]+"|"+parts[3]] = {due:v.due, ivl:Math.max(0,+v.ivl||0), ease:Math.min(4,Math.max(1.3,v.ease)), reps:Math.max(0,v.reps|0), lapses:Math.max(0,v.lapses|0), last:Math.max(0,+v.last||0)};
+    }else if(c === "u" && parts.length === 2 && /^[\w-]{1,40}$/.test(parts[1]) && v && typeof v === "object" && Array.isArray(v.vids)){
+      courses[parts[1]] = {id:parts[1], name:clampStr(v.name,80) || "Course", vids:v.vids.filter(x=>typeof x === "string" && VID_RE.test(x)).slice(0,300), lock:!!v.lock, createdAt:clampStr(v.createdAt,40)};
+    }else if(c === "z" && parts.length === 3 && VID_RE.test(parts[1]) && /^[\w-]{1,40}$/.test(parts[2]) && v && Number.isFinite(v.s) && Number.isFinite(v.e)){
+      (sessions[parts[1]] = sessions[parts[1]] || []).push({id:parts[2], s:Math.max(0,v.s), e:Math.max(0,v.e), at:Number.isFinite(v.at) ? v.at : 0});
+    }else if(c === "a" && parts.length === 3 && /^\d{4}-\d{2}-\d{2}$/.test(parts[1]) && /^[\w-]{1,16}$/.test(parts[2]) && Number.isFinite(v) && v > 0){
+      (activity[parts[1]] = activity[parts[1]] || {})[parts[2]] = Math.min(86400, v);
+    }else if(c === "m" && parts.length === 2 && VID_RE.test(parts[1]) && /^(do|plan|quick|drop)$/.test(v)){
+      matrix[parts[1]] = v;
     }
   }
   for(const vid in notes) notes[vid].sort((a,b)=> a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : (a.id < b.id ? -1 : 1));
@@ -2185,6 +2364,8 @@ function syncApply(map){
   DB.history = keepHist.map(x=>x.vid);
   DB.historyAt = {}; keepHist.forEach(x=>{ DB.historyAt[x.vid] = x.t; });
   DB.resume = resume;
+  for(const vid in sessions) sessions[vid].sort((a,b)=>a.at - b.at || (a.id < b.id ? -1 : 1));
+  DB.reviews = reviews; DB.courses = courses; DB.sessions = sessions; DB.activity = activity; DB.matrix = matrix;
   const outCats = {};
   for(const n in cats) outCats[n] = Array.isArray(cats[n]) ? cats[n].sort(byOldest).map(x=>x.vid) : [];
   DB.categories = outCats;
@@ -2193,7 +2374,8 @@ function syncApply(map){
     const m = meta[vid];
     DB.videos[vid] = {videoId:vid, channelId:/^UC[\w-]{22}$/.test(m.channelId) ? m.channelId : "", channelTitle:clampStr(m.channelTitle,200),
       title:clampStr(m.title,300) || "Untitled", published:clampStr(m.published,40) || new Date().toISOString(),
-      url:"https://www.youtube.com/watch?v="+vid, thumb:"https://i.ytimg.com/vi/"+vid+"/hqdefault.jpg", seen:true};
+      url:"https://www.youtube.com/watch?v="+vid, thumb:"https://i.ytimg.com/vi/"+vid+"/hqdefault.jpg", seen:true, ...(m.single ? {single:true} : {})};
+    if(m.local){ DB.videos[vid].local = true; DB.videos[vid].single = true; DB.videos[vid].thumb = ""; DB.videos[vid].url = ""; DB.videos[vid].channelTitle = "Local file"; }
   }
   keepHist.forEach(x=>{ if(DB.videos[x.vid]) DB.videos[x.vid].seen = true; });
   try{ localStorage.setItem(DB_KEY, JSON.stringify(DB)); }catch(err){}
@@ -2485,7 +2667,7 @@ setInterval(()=>{ if(dockEl.classList.contains('show') && !dockEl.classList.cont
 
 /* mini player controls */
 function updateMiniPlayIcon(state){
-  document.getElementById('miniPlay').textContent = (window.YT && state === YT.PlayerState.PLAYING) ? '⏸' : '▶';
+  document.getElementById('miniPlay').textContent = state === 1 ? '⏸' : '▶';
 }
 document.getElementById('miniPlay').addEventListener('click', ()=>{
   try{ if(ytPlayer.getPlayerState() === 1) ytPlayer.pauseVideo(); else ytPlayer.playVideo(); }catch(e){}
@@ -2599,8 +2781,9 @@ function initPlayerUi(){ syncSettingControls(); applyFocus(); refreshTsChip(); u
    sync as small JSON and export crisply. Coordinates live in a fixed 1000-unit-wide page.
 ============================================================ */
 const INK_W = 1000;
-const INK_COLORS = ['#1a1a1a', '#1d4ed8', '#dc2626', '#15803d', '#7c3aed'];
-const INK_HL = ['#facc15', '#4ade80', '#38bdf8', '#f472b6', '#fb923c'];
+const INK_PRESETS = ['#1a1a1a', '#1d4ed8', '#dc2626', '#15803d', '#7c3aed', '#ea580c', '#facc15', '#4ade80', '#38bdf8', '#f472b6'];
+const INK_PEN_SIZES = [1.5, 2.5, 3.5, 5, 8], INK_HL_SIZES = [3, 5, 8, 12];
+let inkPrefs = {color:'#1a1a1a', size:3.5, hsize:5};
 const INK_BGS = ['lined', 'grid', 'plain'];
 let inkSt = null;
 const inkEl = document.getElementById('inkEditor'), inkWrap = document.getElementById('inkWrap'), inkCanvas = document.getElementById('inkCanvas');
@@ -2678,7 +2861,7 @@ function inkToCanvas(ink, widthPx, crop){
 function noteBodyHtml(vid, n){
   let h = '';
   if(n.ink) h += '<canvas class="ink-thumb" data-ink="' + vid + '|' + n.id + '"></canvas>';
-  if(n.text) h += '<div class="n-text">' + escapeHtml(n.text) + '</div>';
+  if(n.text) h += '<div class="n-text">' + clozeHtml(n.text) + '</div>';
   return h || '<div class="n-text">(empty)</div>';
 }
 function paintInkThumbs(root){
@@ -2739,8 +2922,8 @@ function inkRedraw(live){
 function updateInkUi(){
   if(!inkSt) return;
   inkEl.querySelectorAll('[data-tool]').forEach(b=>b.classList.toggle('on', b.dataset.tool === inkSt.tool));
-  inkEl.querySelectorAll('[data-color]').forEach(b=>b.classList.toggle('on', b.dataset.color === INK_COLORS[inkSt.ci]));
-  inkEl.querySelectorAll('[data-size]').forEach(b=>b.classList.toggle('on', parseFloat(b.dataset.size) === inkSt.size));
+  inkEl.querySelectorAll('[data-tool]').forEach(b=>b.classList.toggle('has-pop', b.dataset.tool === 'pen' || b.dataset.tool === 'hl'));
+  document.getElementById('inkSwatch').style.background = inkSt.color;
   document.getElementById('inkUndo').disabled = !inkSt.undo.length;
   document.getElementById('inkRedo').disabled = !inkSt.redo.length;
   document.getElementById('inkFinger').classList.toggle('on', inkSt.finger);
@@ -2758,7 +2941,7 @@ function openInk(noteId){
     ink = JSON.parse(JSON.stringify(n.ink)); ts = n.ts;
   }else ink = newInk();
   const hasPen = inkSt ? inkSt.penSeen : false;
-  inkSt = {videoId:currentVideoId, noteId:noteId || null, ink, ts, tool:'pen', ci:0, size:3.5, undo:[], redo:[], full:false, cur:null, penSeen:hasPen, finger:!hasPen, scale:1, dpr:1, lastW:0, dirty:false};
+  inkSt = {videoId:currentVideoId, noteId:noteId || null, ink, ts, tool:'pen', color:inkPrefs.color, size:inkPrefs.size, hsize:inkPrefs.hsize, undo:[], redo:[], full:false, cur:null, penSeen:hasPen, finger:!hasPen, scale:1, dpr:1, lastW:0, dirty:false};
   if(!noteId) inkSt.ink.h = 1100;
   inkEl.classList.add('open'); document.body.classList.add('ink-open');
   if(DB.settings.pauseTyping){ try{ if(ytPlayer && playerReady && ytPlayer.getPlayerState && ytPlayer.getPlayerState() === 1){ ytPlayer.pauseVideo(); pausedByTyping = true; } }catch(e){} }
@@ -2770,7 +2953,7 @@ function openInk(noteId){
 function inkClose(autosave){
   if(!inkSt) return;
   if(autosave && inkSt.ink.strokes.length) inkSave(true);
-  inkSt = null; inkTouches.clear();
+  inkSt = null; inkTouches.clear(); closeInkPop();
   inkEl.classList.remove('open', 'full'); document.body.classList.remove('ink-open');
   if(pausedByTyping){ pausedByTyping = false; try{ ytPlayer.playVideo(); }catch(e){} }
   updateDockMode();
@@ -2820,6 +3003,7 @@ function eraseAt(x, y){
 function inkPushUndo(){ inkSt.undo.push(inkSt.ink.strokes.slice()); if(inkSt.undo.length > 60) inkSt.undo.shift(); inkSt.redo = []; }
 inkCanvas.addEventListener('pointerdown', (e)=>{
   if(!inkSt) return;
+  if(!inkSizePop.hidden || !inkColorPop.hidden) closeInkPop();
   if(e.pointerType === 'pen' && !inkSt.penSeen){ inkSt.penSeen = true; inkSt.finger = false; updateInkUi(); }
   if(e.pointerType === 'touch'){
     inkTouches.set(e.pointerId, {y:e.clientY});
@@ -2841,7 +3025,7 @@ inkCanvas.addEventListener('pointerdown', (e)=>{
     updateInkUi(); return;
   }
   const hl = inkSt.tool === 'hl';
-  inkSt.cur = {k:hl ? 'h' : 'p', c:hl ? INK_HL[inkSt.ci] : INK_COLORS[inkSt.ci], s:inkSt.size, p:[x, y]};
+  inkSt.cur = {k:hl ? 'h' : 'p', c:inkSt.color, s:hl ? inkSt.hsize : inkSt.size, p:[x, y]};
 });
 inkCanvas.addEventListener('pointermove', (e)=>{
   if(!inkSt) return;
@@ -2896,17 +3080,87 @@ window.addEventListener('pointerup', (e)=>{ if(inkSt && inkSt.cur && e.pointerId
 window.addEventListener('pointercancel', (e)=>{ if(inkSt && inkSt.cur && e.pointerId === inkSt.pid) inkFinishStroke(); }, true);
 window.addEventListener('blur', ()=>{ if(inkSt && inkSt.cur) inkFinishStroke(); });
 inkCanvas.addEventListener('pointercancel', (e)=>{ if(inkSt && inkSt.cur && e.pointerId === inkSt.pid) inkFinishStroke(); if(e.pointerType === 'touch') inkTouches.delete(e.pointerId); });
-inkCanvas.addEventListener('contextmenu', (e)=>e.preventDefault());
+/* iPad: stop the long-press / right-click menu, text selection and the magnifier while writing */
+['contextmenu','selectstart','dragstart','gesturestart'].forEach(t=>inkEl.addEventListener(t, (e)=>e.preventDefault(), true));
+document.addEventListener('contextmenu', (e)=>{ if(inkSt) e.preventDefault(); }, true);
+['touchstart','touchmove'].forEach(t=>inkCanvas.addEventListener(t, (e)=>{ if(inkSt && inkSt.tool !== 'hand' && e.cancelable) e.preventDefault(); }, {passive:false}));
+inkCanvas.addEventListener('mousedown', (e)=>{ if(inkSt) e.preventDefault(); });
+inkCanvas.addEventListener('auxclick', (e)=>e.preventDefault());
 
 /* toolbar */
-inkEl.querySelectorAll('[data-tool]').forEach(b=>b.addEventListener('click', ()=>{ if(inkSt){ inkSt.tool = b.dataset.tool; updateInkUi(); } }));
-inkEl.querySelectorAll('[data-color]').forEach(b=>b.addEventListener('click', ()=>{
+/* dropdowns: size (pen / highlighter) and color (hue + saturation/brightness box) */
+const inkSizePop = document.getElementById('inkSizePop'), inkColorPop = document.getElementById('inkColorPop'), inkSV = document.getElementById('inkSV'), inkHue = document.getElementById('inkHue');
+function closeInkPop(){ inkSizePop.hidden = true; inkColorPop.hidden = true; }
+function placePop(pop, btn){
+  const er = inkEl.getBoundingClientRect(), br = btn.getBoundingClientRect();
+  pop.hidden = false;
+  const w = pop.offsetWidth; let left = br.left - er.left + br.width / 2 - w / 2;
+  left = Math.max(6, Math.min(er.width - w - 6, left));
+  pop.style.left = left + 'px'; pop.style.top = (br.bottom - er.top + 6) + 'px';
+}
+function openSizePop(btn){
+  const hl = inkSt.tool === 'hl', sizes = hl ? INK_HL_SIZES : INK_PEN_SIZES, cur = hl ? inkSt.hsize : inkSt.size;
+  inkSizePop.innerHTML = '<div class="ink-sizes">' + sizes.map(s=>'<button data-sz="' + s + '" class="' + (s === cur ? 'on' : '') + '" aria-label="Size ' + s + '"><i style="--d:' + Math.round((hl ? 5 + s * 1.3 : 2 + s * 1.6)) + 'px"></i></button>').join('') + '</div>';
+  inkColorPop.hidden = true; placePop(inkSizePop, btn);
+  inkSizePop.querySelectorAll('[data-sz]').forEach(b=>b.addEventListener('click', ()=>{
+    const v = parseFloat(b.dataset.sz);
+    if(hl){ inkSt.hsize = inkPrefs.hsize = v; } else { inkSt.size = inkPrefs.size = v; }
+    closeInkPop();
+  }));
+}
+inkEl.querySelectorAll('[data-tool]').forEach(b=>b.addEventListener('click', ()=>{
   if(!inkSt) return;
-  inkSt.ci = INK_COLORS.indexOf(b.dataset.color);
-  if(inkSt.tool === 'eraser' || inkSt.tool === 'hand') inkSt.tool = 'pen';
-  updateInkUi();
+  const t = b.dataset.tool;
+  if(inkSt.tool === t && (t === 'pen' || t === 'hl')){ if(inkSizePop.hidden) openSizePop(b); else closeInkPop(); return; }
+  inkSt.tool = t; closeInkPop(); updateInkUi();
 }));
-inkEl.querySelectorAll('[data-size]').forEach(b=>b.addEventListener('click', ()=>{ if(inkSt){ inkSt.size = parseFloat(b.dataset.size); updateInkUi(); } }));
+/* colour maths */
+function hsv2hex(h, s, v){
+  const f = (n)=>{ const k = (n + h / 60) % 6; return v - v * s * Math.max(0, Math.min(k, 4 - k, 1)); };
+  return '#' + [f(5), f(3), f(1)].map(x=>Math.round(x * 255).toString(16).padStart(2, '0')).join('');
+}
+function hex2hsv(hex){
+  const r = parseInt(hex.slice(1, 3), 16) / 255, g = parseInt(hex.slice(3, 5), 16) / 255, b = parseInt(hex.slice(5, 7), 16) / 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn; let hh = 0;
+  if(d){ if(mx === r) hh = ((g - b) / d + 6) % 6; else if(mx === g) hh = (b - r) / d + 2; else hh = (r - g) / d + 4; hh *= 60; }
+  return [hh, mx ? d / mx : 0, mx];
+}
+let inkHsv = [0, 0, 0.1];
+function paintSV(){
+  const c = inkSV.getContext('2d'), w = inkSV.width, hgt = inkSV.height;
+  c.clearRect(0, 0, w, hgt);
+  let g = c.createLinearGradient(0, 0, w, 0); g.addColorStop(0, '#fff'); g.addColorStop(1, hsv2hex(inkHsv[0], 1, 1)); c.fillStyle = g; c.fillRect(0, 0, w, hgt);
+  g = c.createLinearGradient(0, 0, 0, hgt); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, '#000'); c.fillStyle = g; c.fillRect(0, 0, w, hgt);
+  const x = inkHsv[1] * w, y = (1 - inkHsv[2]) * hgt;
+  c.beginPath(); c.arc(x, y, 8, 0, 7); c.lineWidth = 3; c.strokeStyle = '#fff'; c.stroke(); c.lineWidth = 1; c.strokeStyle = '#000'; c.beginPath(); c.arc(x, y, 10, 0, 7); c.stroke();
+}
+function setInkColor(hex, fromHsv){
+  if(!inkSt) return;
+  inkSt.color = inkPrefs.color = hex;
+  if(!fromHsv) inkHsv = hex2hsv(hex);
+  document.getElementById('inkHex').textContent = hex; document.getElementById('inkSwatch').style.background = hex;
+  inkHue.value = Math.round(inkHsv[0]); paintSV();
+  if(inkSt.tool === 'eraser' || inkSt.tool === 'hand'){ inkSt.tool = 'pen'; updateInkUi(); }
+}
+function svFromEvent(e){
+  const r = inkSV.getBoundingClientRect();
+  inkHsv[1] = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)); inkHsv[2] = 1 - Math.max(0, Math.min(1, (e.clientY - r.top) / r.height));
+  setInkColor(hsv2hex(inkHsv[0], inkHsv[1], inkHsv[2]), true);
+}
+let svDrag = false;
+inkSV.addEventListener('pointerdown', (e)=>{ svDrag = true; try{ inkSV.setPointerCapture(e.pointerId); }catch(err){} svFromEvent(e); e.preventDefault(); });
+inkSV.addEventListener('pointermove', (e)=>{ if(svDrag) svFromEvent(e); });
+['pointerup', 'pointercancel'].forEach(t=>inkSV.addEventListener(t, ()=>{ svDrag = false; }));
+inkHue.addEventListener('input', ()=>{ inkHsv[0] = parseFloat(inkHue.value); setInkColor(hsv2hex(inkHsv[0], inkHsv[1], inkHsv[2]), true); });
+document.getElementById('inkPresets').innerHTML = INK_PRESETS.map(c=>'<button data-pc="' + c + '" style="--c:' + c + '" aria-label="' + c + '"></button>').join('');
+document.querySelectorAll('#inkPresets [data-pc]').forEach(b=>b.addEventListener('click', ()=>setInkColor(b.dataset.pc, false)));
+document.getElementById('inkColorBtn').addEventListener('click', (e)=>{
+  if(!inkSt) return;
+  if(!inkColorPop.hidden){ closeInkPop(); return; }
+  inkSizePop.hidden = true; inkHsv = hex2hsv(inkSt.color);
+  placePop(inkColorPop, e.currentTarget);
+  document.getElementById('inkHex').textContent = inkSt.color; inkHue.value = Math.round(inkHsv[0]); paintSV();
+});
 document.getElementById('inkUndo').addEventListener('click', ()=>{ if(inkSt && inkSt.undo.length){ inkSt.redo.push(inkSt.ink.strokes); inkSt.ink.strokes = inkSt.undo.pop(); inkRedraw(); updateInkUi(); } });
 document.getElementById('inkRedo').addEventListener('click', ()=>{ if(inkSt && inkSt.redo.length){ inkSt.undo.push(inkSt.ink.strokes); inkSt.ink.strokes = inkSt.redo.pop(); inkRedraw(); updateInkUi(); } });
 document.getElementById('inkPaper').addEventListener('click', ()=>{ if(inkSt){ inkSt.ink.bg = INK_BGS[(INK_BGS.indexOf(inkSt.ink.bg) + 1) % INK_BGS.length]; inkRedraw(); toast('Paper: ' + inkSt.ink.bg); } });
@@ -3207,6 +3461,671 @@ document.getElementById('btnExportVideo').addEventListener('click', ()=>openExpo
 document.querySelectorAll('[data-exp]').forEach(b=>b.addEventListener('click', ()=>exportNotes(b.dataset.exp, 'all')));
 
 /* ============================================================
+   PLAYER TOOLS: speed, skip, A-B loop, reflection pauses, watch log + heat strip, activity tracking
+============================================================ */
+function pl(){ return (ytPlayer && playerReady) ? ytPlayer : null; }
+const SPEEDS_FALLBACK = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+let lastTickAt = Date.now(), lastT = 0, seg = null, firedPause = null, activityFlushAt = 0;
+
+function rate(){ return DB.settings.rate || 1; }
+function applyRate(){
+  const p = pl(), r = rate();
+  try{ if(p && p.setPlaybackRate) p.setPlaybackRate(r); }catch(e){}
+  const b = document.getElementById('ctlSpeed'); if(b) b.textContent = (Math.round(r * 100) / 100) + '×';
+}
+function availableRates(){
+  try{ const p = pl(); const r = p && p.getAvailablePlaybackRates && p.getAvailablePlaybackRates(); if(r && r.length > 1) return r.filter(x=>x >= 0.25); }catch(e){}
+  return SPEEDS_FALLBACK;
+}
+function skipBy(d){
+  const p = pl(); if(!p) return;
+  try{ p.seekTo(Math.max(0, (p.getCurrentTime() || 0) + d), true); }catch(e){}
+}
+function closeCtlPop(){ const o = document.getElementById('ctlPop'); if(o) o.remove(); }
+function openCtlPop(btn, html, onPick){
+  closeCtlPop();
+  const pop = document.createElement('div'); pop.id = 'ctlPop'; pop.className = 'ctl-pop'; pop.innerHTML = html;
+  document.body.appendChild(pop);
+  const r = btn.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight;
+  pop.style.left = Math.max(6, Math.min(window.innerWidth - w - 6, r.left + r.width / 2 - w / 2)) + 'px';
+  pop.style.top = (r.top - h - 6 > 6 ? r.top - h - 6 : r.bottom + 6) + 'px';
+  pop.querySelectorAll('[data-v]').forEach(b=>b.addEventListener('click', ()=>{ onPick(b.dataset.v); closeCtlPop(); }));
+  setTimeout(()=>document.addEventListener('pointerdown', function h(e){ if(!pop.contains(e.target)){ closeCtlPop(); document.removeEventListener('pointerdown', h, true); } }, true), 0);
+}
+document.getElementById('ctlSpeed').addEventListener('click', (e)=>{
+  const cur = rate();
+  openCtlPop(e.currentTarget, '<div class="ctl-list">' + availableRates().map(r=>'<button data-v="' + r + '" class="' + (r === cur ? 'on' : '') + '">' + r + '×</button>').join('') + '</div>',
+    (v)=>{ DB.settings.rate = parseFloat(v); saveNow(); applyRate(); });
+});
+document.getElementById('ctlBack10').addEventListener('click', ()=>skipBy(-10));
+document.getElementById('ctlBack5').addEventListener('click', ()=>skipBy(-5));
+document.getElementById('ctlFwd5').addEventListener('click', ()=>skipBy(5));
+document.getElementById('ctlFwd10').addEventListener('click', ()=>skipBy(10));
+window.addEventListener('keydown', (e)=>{
+  if(!onPlayerPage() || inkSt) return;
+  const tg = e.target, tag = tg && tg.tagName;
+  if(tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'SELECT' || (tg && tg.isContentEditable)) return;
+  if(e.ctrlKey || e.metaKey || e.altKey) return;
+  if(e.key === 'ArrowLeft'){ skipBy(e.shiftKey ? -10 : -5); e.preventDefault(); }
+  else if(e.key === 'ArrowRight'){ skipBy(e.shiftKey ? 10 : 5); e.preventDefault(); }
+  else if(e.key === '[' || e.key === ']'){
+    const rs = availableRates(); let i = rs.indexOf(rate()); if(i < 0) i = rs.findIndex(x=>x >= rate());
+    i = Math.max(0, Math.min(rs.length - 1, i + (e.key === ']' ? 1 : -1)));
+    DB.settings.rate = rs[i]; saveNow(); applyRate(); toast('Speed ' + rs[i] + '×');
+  }
+});
+
+/* ---- A-B loop ---- */
+function updateLoopBtn(){
+  const b = document.getElementById('ctlLoop'); if(!b) return;
+  const lp = currentVideoId && DB.loops[currentVideoId];
+  b.classList.toggle('on', !!(lp && lp.b != null));
+  b.classList.toggle('half', !!(lp && lp.b == null));
+  b.textContent = !lp ? 'A–B' : (lp.b == null ? 'A ▸' : '🔁 ✕');
+  b.title = !lp ? 'Loop a section: tap at the start, then at the end' : (lp.b == null ? 'Now tap at the end of the section' : 'Looping ' + fmtSecs(lp.a) + ' to ' + fmtSecs(lp.b) + '. Tap to clear');
+}
+document.getElementById('ctlLoop').addEventListener('click', ()=>{
+  const p = pl(); if(!p || !currentVideoId) return;
+  let t = 0; try{ t = p.getCurrentTime() || 0; }catch(e){}
+  const lp = DB.loops[currentVideoId];
+  if(!lp){ DB.loops[currentVideoId] = {a:t, b:null}; toast('Loop starts at ' + fmtSecs(t) + '. Tap again where it should end.'); }
+  else if(lp.b == null){
+    if(t <= lp.a + 1){ toast('Play a little further, then tap again'); return; }
+    lp.b = t; toast('Looping ' + fmtSecs(lp.a) + ' to ' + fmtSecs(lp.b));
+    try{ p.seekTo(lp.a, true); }catch(e){}
+  }else{ delete DB.loops[currentVideoId]; toast('Loop cleared'); }
+  save(); updateLoopBtn(); drawStrip();
+});
+
+/* ---- reflection pause points (a checkpoint can pause the video when playback reaches it) ---- */
+function reflectPrompt(c){
+  toast('⏸ Pause point. What did you just learn?');
+  pendingNoteTs = c.seconds; refreshTsChip();
+  const ta = document.getElementById('noteInput'); if(ta && onPlayerPage()) ta.focus();
+}
+
+/* ---- watch log ---- */
+function segClose(){
+  if(!seg) return;
+  const s = seg; seg = null;
+  if(s.e - s.s < 5) return;
+  const arr = DB.sessions[s.vid] || (DB.sessions[s.vid] = []);
+  const last = arr[arr.length - 1];
+  if(last && Math.abs(last.e - s.s) <= 3 && s.at - last.at < 10 * 60000){ last.e = Math.round(s.e); last.at = s.at; }
+  else{ arr.push({id:uid(), s:Math.round(s.s), e:Math.round(s.e), at:s.at}); if(arr.length > 150) arr.splice(0, arr.length - 150); }
+  save(true);
+  if(currentVideoId === s.vid) renderWatchLog();
+}
+function dayName(ms){ return new Date(ms).toLocaleDateString(undefined, {weekday:'short', month:'short', day:'numeric'}); }
+function renderWatchLog(){
+  const el = document.getElementById('watchLog'); if(!el) return;
+  const arr = ((currentVideoId && DB.sessions[currentVideoId]) || []).slice().sort((a,b)=>b.at - a.at).slice(0, 30);
+  if(!arr.length){ el.innerHTML = ''; return; }
+  el.innerHTML = '<div class="section-title" style="margin:14px 0 6px;">Watch log</div>' + arr.map(s=>
+    '<div class="log-row"><span>' + fmtSecs(s.s) + ' – ' + fmtSecs(s.e) + '</span><span class="log-day">' + dayName(s.at) + '</span><button data-jump="' + s.s + '" class="mini-link">Jump</button></div>').join('');
+  el.querySelectorAll('[data-jump]').forEach(b=>b.addEventListener('click', ()=>{ const p = pl(); if(p) p.seekTo(parseFloat(b.dataset.jump), true); }));
+}
+
+/* ---- timeline strip under the video: watched parts as a heat map, loop, checkpoints ---- */
+function drawStrip(){
+  const cv = document.getElementById('heatStrip'); if(!cv || !currentVideoId || !cv.offsetParent) return;
+  const p = pl(); let dur = 0;
+  try{ dur = (p && p.getDuration) ? (p.getDuration() || 0) : 0; }catch(e){}
+  const r = DB.resume[currentVideoId]; if(!dur && r && r.dur) dur = r.dur;
+  const W = Math.max(50, Math.round(cv.clientWidth)), H = 10;
+  if(cv.width !== W) cv.width = W; if(cv.height !== H) cv.height = H;
+  const c = cv.getContext('2d'); c.clearRect(0, 0, W, H);
+  c.fillStyle = 'rgba(255,255,255,0.07)'; c.fillRect(0, 2, W, H - 4);
+  if(!dur) return;
+  const bins = Math.min(160, W), counts = new Array(bins).fill(0);
+  const list = (DB.sessions[currentVideoId] || []).concat(seg && seg.vid === currentVideoId ? [{s:seg.s, e:seg.e}] : []);
+  list.forEach(s=>{
+    const b0 = Math.max(0, Math.floor(s.s / dur * bins)), b1 = Math.min(bins - 1, Math.floor(s.e / dur * bins));
+    for(let i = b0; i <= b1; i++) counts[i]++;
+  });
+  const mx = Math.max(1, ...counts);
+  for(let i = 0; i < bins; i++) if(counts[i]){ c.fillStyle = 'rgba(34,211,238,' + (0.3 + 0.7 * counts[i] / mx).toFixed(2) + ')'; c.fillRect(i * W / bins, 2, W / bins + 0.8, H - 4); }
+  const lp = DB.loops[currentVideoId];
+  if(lp){
+    c.fillStyle = 'rgba(250,204,21,.95)';
+    if(lp.b != null) c.fillRect(lp.a / dur * W, H - 3, Math.max(2, (lp.b - lp.a) / dur * W), 3);
+    else c.fillRect(lp.a / dur * W, 0, 2, H);
+  }
+  (DB.checkpoints[currentVideoId] || []).forEach(k=>{ c.fillStyle = k.pause ? '#fb923c' : '#ffffff'; c.fillRect(Math.max(0, k.seconds / dur * W - 1), 0, 2, H); });
+  const now = (p && p.getCurrentTime) ? (p.getCurrentTime() || 0) : 0;
+  c.fillStyle = '#fff'; c.fillRect(Math.min(W - 2, now / dur * W), 0, 2, H);
+}
+document.getElementById('heatStrip').addEventListener('pointerdown', (e)=>{
+  const p = pl(), cv = e.currentTarget; if(!p) return;
+  let dur = 0; try{ dur = p.getDuration() || 0; }catch(err){}
+  if(!dur) return;
+  const r = cv.getBoundingClientRect(); p.seekTo(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * dur, true);
+});
+
+/* ---- main tick: loop, pause points, watch log, daily activity ---- */
+setInterval(()=>{
+  const p = pl();
+  if(!p || !currentVideoId || !p.getPlayerState){ if(seg) segClose(); return; }
+  let st, t;
+  try{ st = p.getPlayerState(); t = p.getCurrentTime() || 0; }catch(e){ return; }
+  const now = Date.now(), dt = Math.min(1, (now - lastTickAt) / 1000); lastTickAt = now;
+  const playing = st === 1;
+  const lp = DB.loops[currentVideoId];
+  if(playing && lp && lp.b != null && t >= lp.b){ try{ p.seekTo(lp.a, true); }catch(e){} t = lp.a; segClose(); }
+  if(playing){
+    const cps = DB.checkpoints[currentVideoId] || [];
+    for(const k of cps){
+      if(k.pause && lastT < k.seconds - 0.05 && t >= k.seconds && t - lastT < 2 && firedPause !== k.id){
+        firedPause = k.id; try{ p.pauseVideo(); }catch(e){} reflectPrompt(k); break;
+      }
+    }
+    if(firedPause && !cps.some(k=>k.id === firedPause && Math.abs(k.seconds - t) < 3)) firedPause = null;
+  }
+  lastT = t;
+  if(playing){
+    if(seg && (seg.vid !== currentVideoId || Math.abs(t - seg.e) > 3)) segClose();
+    if(!seg) seg = {vid:currentVideoId, s:t, e:t, at:now};
+    seg.e = t; seg.at = now;
+    const day = dayKey(now), a = DB.activity[day] || (DB.activity[day] = {});
+    a[DEV] = (a[DEV] || 0) + dt;
+    if(now - activityFlushAt > 15000){ activityFlushAt = now; save(true); }
+  }else if(st !== 3 && seg) segClose();
+}, 250);
+setInterval(()=>{ if(onPlayerPage()) drawStrip(); }, 1000);
+
+/* ---- feed filters ---- */
+function hiddenKeywords(){
+  return String(DB.settings.hideKeywords || '').split(/[,\n]/).map(s=>s.trim().toLowerCase()).filter(Boolean);
+}
+function hiddenByKeyword(v, kws){
+  if(!kws.length) return false;
+  const t = (v.title || '').toLowerCase();
+  return kws.some(k=>t.includes(k));
+}
+function applyThumbMode(){
+  const m = DB.settings.thumbMode || 'normal';
+  document.body.classList.toggle('thumbs-blur', m === 'blur');
+  document.body.classList.toggle('thumbs-off', m === 'text');
+}
+function initToolSettings(){
+  const kw = document.getElementById('setKeywords'); if(kw) kw.value = DB.settings.hideKeywords || '';
+  const tm = document.getElementById('setThumbMode'); if(tm) tm.value = DB.settings.thumbMode || 'normal';
+  const rw = document.getElementById('setRewindChk'); if(rw) rw.checked = DB.settings.rewind !== false;
+  applyThumbMode(); applyRate(); updateLoopBtn(); updateHiddenCount();
+}
+function updateHiddenCount(){
+  const el = document.getElementById('hiddenCount'); if(!el) return;
+  const kws = hiddenKeywords();
+  const n = kws.length ? Object.values(DB.videos).filter(v=>!v.single && hiddenByKeyword(v, kws)).length : 0;
+  el.textContent = kws.length ? (n + ' video' + (n === 1 ? '' : 's') + ' currently hidden') : 'No filter set';
+}
+document.getElementById('setKeywords').addEventListener('change', (e)=>{ DB.settings.hideKeywords = e.target.value; saveNow(); updateHiddenCount(); renderHome(); renderVideoList(); });
+document.getElementById('setThumbMode').addEventListener('change', (e)=>{ DB.settings.thumbMode = e.target.value; saveNow(); applyThumbMode(); });
+document.getElementById('setRewindChk').addEventListener('change', (e)=>{ DB.settings.rewind = e.target.checked; saveNow(); });
+
+/* ============================================================
+   CLOZE NOTES + SPACED REPETITION (SM-2 style) + NOTE TEMPLATES
+   Write {{c1::answer}} in a note (or "question :: answer" on its own line). Each becomes a flashcard.
+============================================================ */
+const CLOZE_RE = /\{\{c(\d{1,2})::([\s\S]*?)(?:::([\s\S]*?))?\}\}/g;
+const MIN = 60000, DAY = 86400000;
+
+function clozeHtml(text){   // for note lists: highlight hidden terms
+  return escapeHtml(text).replace(CLOZE_RE, (m, i, a)=>'<span class="cz-chip" title="Flashcard c' + i + '">' + a + '</span>');
+}
+function nl2br(s){ return s.replace(/\n/g, '<br>'); }
+function cardsOfNote(vid, n){
+  const text = n.text || '', out = [];
+  const idxs = new Set();
+  text.replace(CLOZE_RE, (m, i)=>{ idxs.add(parseInt(i, 10)); return m; });
+  [...idxs].sort((a,b)=>a - b).forEach(idx=>{
+    const render = (reveal)=>nl2br(escapeHtml(text).replace(CLOZE_RE, (m, i, ans, hint)=>{
+      if(parseInt(i, 10) !== idx) return ans;
+      return reveal ? '<span class="cz-ans">' + ans + '</span>' : '<span class="cz-blank">[' + (hint ? hint : '…') + ']</span>';
+    }));
+    out.push({key:vid + '|' + n.id + '|' + idx, vid, note:n, front:render(false), back:render(true)});
+  });
+  text.split('\n').forEach((line, li)=>{
+    const m = line.match(/^(.{1,400}?)\s::\s(.{1,800})$/);
+    if(m && li < 99 && !/\{\{c\d/.test(line)) out.push({key:vid + '|' + n.id + '|q' + li, vid, note:n, front:escapeHtml(m[1]), back:escapeHtml(m[1]) + '<hr class="card-hr">' + escapeHtml(m[2])});
+  });
+  return out;
+}
+function allCards(){
+  const out = [];
+  for(const vid in DB.notes) for(const n of DB.notes[vid]) if(n && n.text && n.text.includes('::')) out.push(...cardsOfNote(vid, n));
+  return out;
+}
+function newToday(){ const r = DB.settings.revNew; return (r && r.day === dayKey(Date.now())) ? r.n : 0; }
+function bumpNew(){ const d = dayKey(Date.now()); DB.settings.revNew = {day:d, n:(DB.settings.revNew && DB.settings.revNew.day === d ? DB.settings.revNew.n : 0) + 1}; }
+const NEW_LIMIT = 20;
+function reviewQueue(){
+  const now = Date.now(), cards = allCards(), due = [], fresh = [];
+  cards.forEach(c=>{ const s = DB.reviews[c.key]; if(!s) fresh.push(c); else if(s.due <= now) due.push(c); });
+  due.sort((a,b)=>DB.reviews[a.key].due - DB.reviews[b.key].due);
+  const allowed = Math.max(0, NEW_LIMIT - newToday());
+  return {due, fresh, queue:due.concat(fresh.slice(0, allowed)), total:cards.length, fresh_all:fresh.length};
+}
+function fmtIvl(ms){
+  if(ms < 60 * MIN) return Math.max(1, Math.round(ms / MIN)) + 'm';
+  if(ms < DAY) return Math.round(ms / (60 * MIN)) + 'h';
+  const d = ms / DAY; return d < 30 ? Math.round(d) + 'd' : d < 365 ? Math.round(d / 30) + 'mo' : (d / 365).toFixed(1) + 'y';
+}
+function schedule(s, grade){   // grade: 0 again, 1 hard, 2 good, 3 easy -> new state
+  const st = s ? {...s} : {due:0, ivl:0, ease:2.5, reps:0, lapses:0};
+  const now = Date.now();
+  if(grade === 0){ st.reps = 0; st.lapses++; st.ease = Math.max(1.3, st.ease - 0.2); st.ivl = 0; st.due = now + 10 * MIN; }
+  else{
+    let days;
+    if(grade === 1){ days = Math.max(1, (st.ivl || 1) * 1.2); st.ease = Math.max(1.3, st.ease - 0.15); }
+    else if(grade === 2){ days = st.reps === 0 ? 1 : st.reps === 1 ? 3 : Math.max(st.ivl + 1, st.ivl * st.ease); }
+    else{ days = st.reps === 0 ? 4 : Math.max(st.ivl + 2, st.ivl * st.ease * 1.3); st.ease += 0.15; }
+    st.ivl = Math.round(days * 10) / 10; st.reps++; st.due = now + st.ivl * DAY;
+  }
+  st.last = now;
+  return st;
+}
+let rv = null;   // review session
+function reviewDueCount(){ try{ const q = reviewQueue(); return q.queue.length; }catch(e){ return 0; } }
+function startReview(){
+  const q = reviewQueue();
+  if(!q.queue.length){ toast(q.total ? 'Nothing due right now. Nice work.' : 'Add {{c1::cloze}} notes first'); return; }
+  rv = {queue:q.queue.slice(0, 60), i:0, done:0, shown:false};
+  document.getElementById('reviewOverlay').classList.add('open'); document.body.classList.add('rv-open');
+  renderReviewCard();
+}
+function closeReview(){
+  rv = null; document.getElementById('reviewOverlay').classList.remove('open'); document.body.classList.remove('rv-open');
+  renderHome(); if(document.getElementById('page-library').classList.contains('active')) renderLibrary();
+}
+function renderReviewCard(){
+  const box = document.getElementById('rvBody'), bar = document.getElementById('rvCount');
+  if(!rv) return;
+  if(rv.i >= rv.queue.length){
+    box.innerHTML = '<div class="rv-done"><div style="font-size:42px;">🎉</div><div style="font-size:17px;font-weight:700;margin:8px 0;">Session done</div><div style="color:var(--text-2);font-size:13px;">You reviewed ' + rv.done + ' card' + (rv.done === 1 ? '' : 's') + '.</div><button class="btn primary" id="rvFinish" style="margin-top:16px;">Close</button></div>';
+    bar.textContent = ''; document.getElementById('rvFinish').addEventListener('click', closeReview); return;
+  }
+  const c = rv.queue[rv.i], s = DB.reviews[c.key], v = DB.videos[c.vid];
+  bar.textContent = (rv.queue.length - rv.i) + ' left';
+  const next = [0, 1, 2, 3].map(g=>{ const ns = schedule(s, g); return fmtIvl(ns.due - Date.now()); });
+  box.innerHTML =
+    '<div class="rv-src">' + (v ? escapeHtml(v.title) : '') + ' · <button class="mini-link" id="rvOpen">▶ ' + fmtSecs(c.note.ts) + '</button>' + (s ? '' : ' · <b>new</b>') + '</div>' +
+    '<div class="rv-card">' + (rv.shown ? c.back : c.front) + '</div>' +
+    (rv.shown
+      ? '<div class="rv-grades"><button data-g="0" class="g0">Again<small>' + next[0] + '</small></button><button data-g="1" class="g1">Hard<small>' + next[1] + '</small></button><button data-g="2" class="g2">Good<small>' + next[2] + '</small></button><button data-g="3" class="g3">Easy<small>' + next[3] + '</small></button></div>'
+      : '<button class="btn primary block" id="rvShow" style="margin-top:14px;">Show answer</button>');
+  document.getElementById('rvOpen').addEventListener('click', ()=>{ const vid = c.vid, ts = c.note.ts; closeReview(); openVideoAt(vid, ts); });
+  if(!rv.shown) document.getElementById('rvShow').addEventListener('click', ()=>{ rv.shown = true; renderReviewCard(); });
+  else box.querySelectorAll('[data-g]').forEach(b=>b.addEventListener('click', ()=>gradeCard(parseInt(b.dataset.g, 10))));
+}
+function gradeCard(g){
+  if(!rv) return;
+  const c = rv.queue[rv.i], s = DB.reviews[c.key];
+  if(!s) bumpNew();
+  DB.reviews[c.key] = schedule(s, g);
+  saveNow();
+  if(g === 0 && rv.queue.length < 200) rv.queue.push(c);   // see it again in this session
+  rv.i++; rv.done++; rv.shown = false; renderReviewCard();
+}
+document.getElementById('rvClose').addEventListener('click', closeReview);
+window.addEventListener('keydown', (e)=>{
+  if(!rv) return;
+  if(e.key === 'Escape') closeReview();
+  else if(e.key === ' ' || e.key === 'Enter'){ if(!rv.shown && rv.i < rv.queue.length){ rv.shown = true; renderReviewCard(); e.preventDefault(); } }
+  else if(rv.shown && '1234'.includes(e.key)) gradeCard(parseInt(e.key, 10) - 1);
+});
+
+function renderReviewTab(el){
+  const q = reviewQueue();
+  const learned = Object.values(DB.reviews).filter(s=>s.reps >= 3).length;
+  const upcoming = Object.values(DB.reviews).filter(s=>s.due > Date.now() && s.due < Date.now() + 7 * DAY).length;
+  el.innerHTML = '<div class="card" style="grid-column:1/-1;"><div class="rv-stats"><div><b>' + q.queue.length + '</b><span>due now</span></div><div><b>' + q.fresh_all + '</b><span>new</span></div><div><b>' + q.total + '</b><span>cards</span></div><div><b>' + learned + '</b><span>mature</span></div></div>' +
+    '<button class="btn primary block" id="rvStart" style="margin-top:12px;">' + (q.queue.length ? '🧠 Start review (' + q.queue.length + ')' : '✅ All caught up') + '</button>' +
+    '<p style="font-size:12px;color:var(--text-2);line-height:1.6;margin-top:10px;">Cards come from your notes. Wrap a term like <b>{{c1::this}}</b> to hide it, or write <b>question :: answer</b> on a line. ' + upcoming + ' card' + (upcoming === 1 ? '' : 's') + ' coming up this week. Up to ' + NEW_LIMIT + ' new cards per day.</p></div>';
+  document.getElementById('rvStart').addEventListener('click', startReview);
+}
+
+/* ---- composer helpers: make a cloze from the selection, and note templates ---- */
+document.getElementById('btnCloze').addEventListener('click', ()=>{
+  const ta = document.getElementById('noteInput');
+  const a = ta.selectionStart, b = ta.selectionEnd, v = ta.value;
+  let max = 0; v.replace(CLOZE_RE, (m, i)=>{ max = Math.max(max, parseInt(i, 10)); return m; });
+  const n = max + 1, sel = v.slice(a, b);
+  ta.value = v.slice(0, a) + '{{c' + n + '::' + sel + '}}' + v.slice(b);
+  const pos = sel ? a + ('{{c' + n + '::' + sel + '}}').length : a + ('{{c' + n + '::').length;
+  ta.focus(); ta.setSelectionRange(pos, pos); ta.dispatchEvent(new Event('input'));
+});
+document.getElementById('btnCloze').addEventListener('mousedown', (e)=>e.preventDefault());
+const TEMPLATES = [
+  {name:'🩺 Medical (SOAP)', body:'S: \nO: \nA: \nP: '},
+  {name:'💻 Problem / Solution', body:'Problem: \nApproach: \nSolution: \nKey idea: '},
+  {name:'🗣️ Language word', body:'Word :: meaning\nExample: \nUsage: '},
+  {name:'📖 Definition card', body:'Term :: definition\nWhy it matters: \nExample: '},
+  {name:'🎨 Art / animation', body:'Technique: \nWhat I noticed: \nTry this: '},
+  {name:'🧠 Cloze starter', body:'Key fact: {{c1::}}'}
+];
+document.getElementById('tplList').innerHTML = TEMPLATES.map((t, i)=>'<button class="btn block" data-tpl="' + i + '" style="margin-bottom:8px;text-align:left;">' + t.name + '</button>').join('');
+document.querySelectorAll('#tplList [data-tpl]').forEach(b=>b.addEventListener('click', ()=>{
+  const t = TEMPLATES[parseInt(b.dataset.tpl, 10)], ta = document.getElementById('noteInput');
+  ta.value = (ta.value ? ta.value + '\n' : '') + t.body; closeSheet('sheetTpl');
+  ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); ta.dispatchEvent(new Event('input'));
+}));
+document.getElementById('btnTpl').addEventListener('click', ()=>openSheet('sheetTpl'));
+
+/* ============================================================
+   OPEN A VIDEO AT A TIME, SINGLE-VIDEO MODE, DEEP LINKS
+============================================================ */
+function parseVideoId(s){
+  s = String(s || '').trim();
+  if(VID_RE.test(s)) return s;
+  const m = s.match(/(?:youtu\.be\/|[?&]v=|\/shorts\/|\/embed\/|\/live\/|\/v\/)([\w-]{11})/);
+  return m ? m[1] : null;
+}
+function parseTimeParam(s){
+  if(!s) return 0;
+  const m = String(s).match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s?)?$/);
+  if(!m) return 0;
+  return (+m[1] || 0) * 3600 + (+m[2] || 0) * 60 + (+m[3] || 0);
+}
+function openVideoAt(vid, ts){
+  if(!DB.videos[vid]) return false;
+  openPlayer(vid, ts);
+  return true;
+}
+async function openSingleVideo(input, t){
+  const id = parseVideoId(input);
+  if(!id){ toast('That does not look like a YouTube video link'); return false; }
+  if(!DB.videos[id]){
+    const url = 'https://www.youtube.com/watch?v=' + id;
+    let info = null; try{ info = await tryOembed(url); }catch(e){}
+    DB.videos[id] = {videoId:id, channelId:'', channelTitle:(info && info.authorName) || '', title:(info && info.title) || 'YouTube video ' + id,
+      thumb:(info && info.thumb) || 'https://i.ytimg.com/vi/' + id + '/hqdefault.jpg', published:new Date().toISOString(), url, seen:true, single:true};
+    saveNow();
+  }
+  openPlayer(id, t || undefined);
+  return true;
+}
+function deepLinkFor(vid, ts){ return setupBaseUrl() + '#v=' + vid + '&t=' + Math.max(0, Math.floor(ts || 0)); }
+function handleDeepLink(){
+  const m = location.hash.match(/^#v=([\w-]{11})(?:&t=(\d+))?$/);
+  if(!m) return;
+  try{ history.replaceState(null, '', location.pathname + location.search); }catch(e){}
+  openSingleVideo(m[1], parseInt(m[2] || '0', 10));
+}
+window.addEventListener('hashchange', handleDeepLink);
+
+document.getElementById('qaOne').addEventListener('click', ()=>{ document.getElementById('oneInput').value = ''; openSheet('sheetOne'); setTimeout(()=>document.getElementById('oneInput').focus(), 100); });
+document.getElementById('oneGo').addEventListener('click', async ()=>{
+  const b = document.getElementById('oneGo'); b.disabled = true; b.textContent = 'Opening…';
+  const m = document.getElementById('oneInput').value.match(/[?&#]t=([\dhms]+)/);
+  const ok = await openSingleVideo(document.getElementById('oneInput').value, m ? parseTimeParam(m[1]) : 0);
+  b.disabled = false; b.textContent = 'Open'; if(ok) closeSheet('sheetOne');
+});
+document.getElementById('oneInput').addEventListener('keydown', (e)=>{ if(e.key === 'Enter') document.getElementById('oneGo').click(); });
+
+/* ============================================================
+   LOCAL VIDEO / AUDIO FILES (kept on this device; notes and resume work the same)
+============================================================ */
+function idb(){
+  return new Promise((res, rej)=>{
+    const r = indexedDB.open('studytube_files', 1);
+    r.onupgradeneeded = ()=>r.result.createObjectStore('f');
+    r.onsuccess = ()=>res(r.result); r.onerror = ()=>rej(r.error);
+  });
+}
+async function idbPut(k, blob){ const d = await idb(); return new Promise((res, rej)=>{ const t = d.transaction('f', 'readwrite'); t.objectStore('f').put(blob, k); t.oncomplete = ()=>res(); t.onerror = ()=>rej(t.error); }); }
+async function idbGet(k){ const d = await idb(); return new Promise((res, rej)=>{ const q = d.transaction('f').objectStore('f').get(k); q.onsuccess = ()=>res(q.result || null); q.onerror = ()=>rej(q.error); }); }
+let localUrl = null;
+function teardownLocal(){
+  if(ytPlayer && ytPlayer.__local){
+    try{ ytPlayer.destroy(); }catch(e){}
+    ytPlayer = null; playerReady = false;
+  }
+  if(localUrl){ try{ URL.revokeObjectURL(localUrl); }catch(e){} localUrl = null; }
+  const m = document.getElementById('ytMount'); if(m && m.tagName === 'VIDEO') m.remove();
+  ensureMount();
+}
+function makeLocalAdapter(el){
+  return {__local:true,
+    getCurrentTime:()=>el.currentTime || 0, getDuration:()=>isFinite(el.duration) ? el.duration : 0,
+    seekTo:(s)=>{ el.currentTime = Math.max(0, s); }, playVideo:()=>{ el.play().catch(()=>{}); }, pauseVideo:()=>el.pause(),
+    getPlayerState:()=>el.ended ? 0 : (el.paused ? 2 : 1), setPlaybackRate:(r)=>{ el.playbackRate = r; }, getPlaybackRate:()=>el.playbackRate,
+    getAvailablePlaybackRates:()=>[0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3],
+    loadVideoById:()=>{}, destroy:()=>{ try{ el.pause(); el.removeAttribute('src'); el.load(); }catch(e){} el.remove(); }};
+}
+async function loadLocalVideo(vid, startAt){
+  clearTimeout(apiWatchdog); hidePlayerFallback(); clearInterval(resumePollTimer);
+  if(ytPlayer){ try{ ytPlayer.destroy(); }catch(e){} ytPlayer = null; }
+  playerReady = false; pendingVideo = null; teardownLocal();
+  const blob = await idbGet(vid).catch(()=>null);
+  if(currentVideoId !== vid) return;
+  if(!blob){
+    const el = document.getElementById('playerFallback');
+    el.innerHTML = '<div class="fb-title">This file is not on this device</div><div class="fb-sub">Choose the same file again to watch it here. Your notes are safe.</div><div class="mini-btns"><button id="fbPick">📂 Choose file</button></div>';
+    el.classList.add('show');
+    document.getElementById('fbPick').onclick = ()=>pickLocalFile(vid);
+    return;
+  }
+  const wrap = document.getElementById('playerWrap'), old = document.getElementById('ytMount'); if(old) old.remove();
+  const el = document.createElement('video');
+  el.id = 'ytMount'; el.controls = true; el.playsInline = true; el.setAttribute('playsinline', ''); el.preload = 'metadata';
+  localUrl = URL.createObjectURL(blob); el.src = localUrl;
+  wrap.insertBefore(el, wrap.firstChild);
+  const ad = makeLocalAdapter(el);
+  el.addEventListener('loadedmetadata', ()=>{ if(startAt > 1) el.currentTime = startAt; applyRate(); });
+  el.addEventListener('play', ()=>onPlayerStateChange({data:1}));
+  el.addEventListener('pause', ()=>onPlayerStateChange({data:2}));
+  el.addEventListener('ended', ()=>onPlayerStateChange({data:0}));
+  ytPlayer = ad; playerReady = true; startResumePolling(); applyRate();
+}
+function pickLocalFile(existingId){
+  const inp = document.getElementById('localFileInput');
+  inp.onchange = async ()=>{
+    const f = inp.files && inp.files[0]; inp.value = '';
+    if(!f) return;
+    const id = existingId || ('L' + Array.from(crypto.getRandomValues(new Uint8Array(10))).map(b=>'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-'[b % 64]).join(''));
+    try{ await idbPut(id, f); }catch(e){ toast('Could not store the file on this device'); return; }
+    if(!DB.videos[id]) DB.videos[id] = {videoId:id, channelId:'', channelTitle:'Local file', title:f.name.replace(/\.[^.]+$/, ''), thumb:'', published:new Date().toISOString(), url:'', seen:true, single:true, local:true};
+    saveNow(); openPlayer(id);
+  };
+  inp.click();
+}
+document.getElementById('qaLocal').addEventListener('click', ()=>pickLocalFile(null));
+
+/* ============================================================
+   COURSES (ordered playlists across channels, progress, optional prerequisite locks)
+============================================================ */
+function courseProgress(c){
+  const vids = c.vids.filter(v=>DB.videos[v]);
+  const done = vids.filter(v=>DB.completed.includes(v)).length;
+  return {done, total:vids.length, pct:vids.length ? Math.round(done / vids.length * 100) : 0};
+}
+function courseLocked(c, i){ return !!c.lock && i > 0 && !DB.completed.includes(c.vids[i - 1]); }
+function renderCoursesTab(el){
+  const list = Object.values(DB.courses).sort((a,b)=>(a.createdAt || '') < (b.createdAt || '') ? -1 : 1);
+  el.innerHTML = '<div style="grid-column:1/-1;"><button class="btn primary block" id="courseNew">＋ New course</button></div>' +
+    (list.length ? list.map(c=>{
+      const p = courseProgress(c);
+      return '<div class="card course-card" data-course="' + c.id + '" style="margin-top:10px;cursor:pointer;"><div class="row-between"><div style="font-weight:700;font-size:14px;">🎓 ' + escapeHtml(c.name) + (c.lock ? ' 🔒' : '') + '</div><span class="badge">' + p.done + '/' + p.total + '</span></div><div class="vprog big"><i style="width:' + p.pct + '%"></i></div></div>';
+    }).join('') : '<div class="empty-state" style="grid-column:1/-1;"><div class="ei">🎓</div><div class="et">No courses yet</div><div class="es">A course is an ordered path of videos from any channel, with progress. Create one, then add videos from the player (🎓) or from here.</div></div>');
+  document.getElementById('courseNew').addEventListener('click', ()=>newCourse());
+  el.querySelectorAll('[data-course]').forEach(c=>c.addEventListener('click', ()=>openCourse(c.dataset.course)));
+}
+function newCourse(thenAddVid){
+  const name = (prompt('Name this course') || '').trim().slice(0, 80);
+  if(!name) return null;
+  const id = uid(); DB.courses[id] = {id, name, vids:[], lock:false, createdAt:new Date().toISOString()};
+  if(thenAddVid) DB.courses[id].vids.push(thenAddVid);
+  saveNow(); if(document.getElementById('page-library').classList.contains('active')) renderLibrary();
+  return id;
+}
+let openCourseId = null, coursePickQ = '';
+function openCourse(id){ openCourseId = id; coursePickQ = ''; renderCourseSheet(); openSheet('sheetCourse'); }
+function renderCourseSheet(){
+  const c = DB.courses[openCourseId]; if(!c){ closeSheet('sheetCourse'); return; }
+  const p = courseProgress(c), box = document.getElementById('courseBody');
+  box.innerHTML = '<div class="row-between"><div style="font-weight:800;font-size:16px;">🎓 ' + escapeHtml(c.name) + '</div><span class="badge">' + p.done + '/' + p.total + '</span></div>' +
+    '<div class="vprog big" style="margin:8px 0 10px;"><i style="width:' + p.pct + '%"></i></div>' +
+    '<label class="set-row"><span>Lock each video until the one before it is completed</span><input type="checkbox" id="courseLock"' + (c.lock ? ' checked' : '') + '></label>' +
+    '<div id="courseVids" style="margin-top:8px;">' + (c.vids.length ? c.vids.map((vid, i)=>{
+      const v = DB.videos[vid], lk = courseLocked(c, i), dn = DB.completed.includes(vid);
+      return '<div class="course-row' + (lk ? ' locked' : '') + '"><span class="cr-n">' + (dn ? '✅' : lk ? '🔒' : (i + 1)) + '</span><span class="cr-t">' + (v ? escapeHtml(v.title) : '(video not on this device)') + '</span><span class="mini-btns"><button data-play="' + i + '">▶</button><button data-up="' + i + '">▲</button><button data-down="' + i + '">▼</button><button data-rm="' + i + '">✕</button></span></div>';
+    }).join('') : '<p style="font-size:12px;color:var(--text-3);">No videos yet. Add some below.</p>') + '</div>' +
+    '<div class="grid-2" style="margin-top:12px;"><button class="btn sm" id="courseAdd">＋ Add videos</button><button class="btn sm" id="courseShare">🌐 Share as page</button></div>' +
+    '<div class="grid-2" style="margin-top:8px;"><button class="btn sm" id="courseRename">✏️ Rename</button><button class="btn sm danger" id="courseDel">🗑 Delete</button></div>' +
+    '<div id="coursePicker"></div>';
+  document.getElementById('courseLock').addEventListener('change', (e)=>{ c.lock = e.target.checked; saveNow(); renderCourseSheet(); });
+  box.querySelectorAll('[data-play]').forEach(b=>b.addEventListener('click', ()=>{
+    const i = +b.dataset.play, vid = c.vids[i];
+    if(!DB.videos[vid]){ toast('That video is not on this device yet'); return; }
+    if(courseLocked(c, i)){ toast('Finish the previous video first'); return; }
+    closeSheet('sheetCourse'); openPlayer(vid);
+  }));
+  const mv = (i, d)=>{ const j = i + d; if(j < 0 || j >= c.vids.length) return; [c.vids[i], c.vids[j]] = [c.vids[j], c.vids[i]]; saveNow(); renderCourseSheet(); };
+  box.querySelectorAll('[data-up]').forEach(b=>b.addEventListener('click', ()=>mv(+b.dataset.up, -1)));
+  box.querySelectorAll('[data-down]').forEach(b=>b.addEventListener('click', ()=>mv(+b.dataset.down, 1)));
+  box.querySelectorAll('[data-rm]').forEach(b=>b.addEventListener('click', ()=>{ c.vids.splice(+b.dataset.rm, 1); saveNow(); renderCourseSheet(); }));
+  document.getElementById('courseAdd').addEventListener('click', ()=>renderCoursePicker());
+  document.getElementById('courseShare').addEventListener('click', ()=>shareCourse(c));
+  document.getElementById('courseRename').addEventListener('click', ()=>{ const n = (prompt('Rename course', c.name) || '').trim().slice(0, 80); if(n){ c.name = n; saveNow(); renderCourseSheet(); } });
+  document.getElementById('courseDel').addEventListener('click', ()=>{ if(confirm('Delete this course? Your videos and notes stay.')){ delete DB.courses[c.id]; saveNow(); closeSheet('sheetCourse'); renderLibrary(); } });
+}
+function renderCoursePicker(){
+  const c = DB.courses[openCourseId]; if(!c) return;
+  const box = document.getElementById('coursePicker');
+  box.innerHTML = '<input type="search" id="cpQ" placeholder="Search your videos…" value="' + escapeHtml(coursePickQ) + '" style="margin:12px 0 8px;"><div id="cpList"></div>';
+  const draw = ()=>{
+    const q = coursePickQ.toLowerCase();
+    const list = Object.values(DB.videos).filter(v=>!c.vids.includes(v.videoId) && (!q || v.title.toLowerCase().includes(q) || (v.channelTitle || '').toLowerCase().includes(q)))
+      .sort((a,b)=>new Date(b.published) - new Date(a.published)).slice(0, 25);
+    document.getElementById('cpList').innerHTML = list.length ? list.map(v=>'<div class="course-row"><span class="cr-t">' + escapeHtml(v.title) + '<small>' + escapeHtml(v.channelTitle || '') + '</small></span><span class="mini-btns"><button data-add="' + v.videoId + '">＋</button></span></div>').join('') : '<p style="font-size:12px;color:var(--text-3);">No matching videos.</p>';
+    document.querySelectorAll('#cpList [data-add]').forEach(b=>b.addEventListener('click', ()=>{ c.vids.push(b.dataset.add); saveNow(); renderCourseSheet(); renderCoursePicker(); }));
+  };
+  document.getElementById('cpQ').addEventListener('input', (e)=>{ coursePickQ = e.target.value; draw(); });
+  draw();
+}
+async function shareCourse(c){
+  const p = courseProgress(c);
+  let h = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + escapeHtml(c.name) + '</title><style>body{font-family:' + EXPORT_FONT.replace(/"/g, "'") + ';max-width:720px;margin:32px auto;padding:0 18px;color:#0f172a;line-height:1.5}h1{margin-bottom:2px}.sub{color:#64748b;margin-bottom:18px}ol{padding-left:22px}li{margin:10px 0}a{color:#0369a1;text-decoration:none}small{color:#64748b;display:block}.bar{height:8px;background:#e2e8f0;border-radius:9px;overflow:hidden;margin:6px 0 18px}.bar i{display:block;height:100%;background:#22d3ee}</style></head><body><h1>' + escapeHtml(c.name) + '</h1><div class="sub">' + c.vids.length + ' videos · shared from StudyTube</div><div class="bar"><i style="width:' + p.pct + '%"></i></div><ol>';
+  c.vids.forEach(vid=>{ const v = DB.videos[vid]; if(!v) return; h += '<li><a href="' + videoLink(vid) + '">' + escapeHtml(v.title) + '</a><small>' + escapeHtml(v.channelTitle || '') + '</small></li>'; });
+  h += '</ol></body></html>';
+  await saveBinary(c.name.replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').toLowerCase() + '-course.html', new Blob([h], {type:'text/html'}));
+}
+document.getElementById('btnCourseAdd').addEventListener('click', ()=>{
+  if(!currentVideoId) return;
+  const list = Object.values(DB.courses);
+  const box = document.getElementById('coursePickBody');
+  box.innerHTML = (list.length ? list.map(c=>'<button class="btn block" data-cp="' + c.id + '" style="margin-bottom:8px;text-align:left;">' + (c.vids.includes(currentVideoId) ? '✅ ' : '') + '🎓 ' + escapeHtml(c.name) + '</button>').join('') : '<p style="font-size:12px;color:var(--text-3);">No courses yet.</p>') +
+    '<button class="btn primary block" id="cpNew" style="margin-top:6px;">＋ New course with this video</button>';
+  box.querySelectorAll('[data-cp]').forEach(b=>b.addEventListener('click', ()=>{
+    const c = DB.courses[b.dataset.cp], i = c.vids.indexOf(currentVideoId);
+    if(i >= 0){ c.vids.splice(i, 1); toast('Removed from ' + c.name); } else{ c.vids.push(currentVideoId); toast('Added to ' + c.name); }
+    saveNow(); closeSheet('sheetCoursePick');
+  }));
+  document.getElementById('cpNew').addEventListener('click', ()=>{ closeSheet('sheetCoursePick'); const id = newCourse(currentVideoId); if(id) toast('Course created'); });
+  openSheet('sheetCoursePick');
+});
+
+/* ============================================================
+   LIBRARY: unfinished list, priority matrix, stats + heat map
+============================================================ */
+function progressPct(vid){ const r = DB.resume[vid]; return (r && r.dur > 0) ? Math.min(100, Math.round(r.seconds / r.dur * 100)) : null; }
+function renderProgressTab(el){
+  const rows = Object.entries(DB.resume).filter(([vid, r])=>DB.videos[vid] && r.dur > 0 && r.seconds > 5 && !DB.completed.includes(vid))
+    .map(([vid, r])=>({vid, pct:Math.min(100, r.seconds / r.dur * 100), at:Date.parse(r.updatedAt) || 0}))
+    .filter(x=>x.pct < 95).sort((a,b)=>(b.pct - a.pct) || (b.at - a.at));
+  if(!rows.length){ el.innerHTML = '<div class="empty-state"><div class="ei">⏳</div><div class="et">Nothing half-finished</div><div class="es">Videos you start but do not finish appear here, closest to done first.</div></div>'; return; }
+  el.innerHTML = rows.map(x=>videoCardHtml(DB.videos[x.vid], {progress:DB.resume[x.vid].seconds})).join('');
+  attachVideoCardEvents(el);
+}
+const QUADS = {do:['🔥 Do first', 'Urgent and important'], plan:['📅 Schedule', 'Important, not urgent'], quick:['⚡ Quick wins', 'Urgent, not important'], drop:['🗑 Drop', 'Neither']};
+function renderMatrixTab(el){
+  const later = DB.watchLater.filter(v=>DB.videos[v]);
+  const un = later.filter(v=>!DB.matrix[v]);
+  const btns = (vid)=>'<span class="mini-btns">' + Object.keys(QUADS).map(k=>'<button data-mq="' + k + '" data-v="' + vid + '" title="' + QUADS[k][1] + '">' + QUADS[k][0].split(' ')[0] + '</button>').join('') + '</span>';
+  const row = (vid, extra)=>'<div class="course-row"><span class="cr-t">' + escapeHtml(DB.videos[vid].title) + '</span>' + extra + '</div>';
+  el.innerHTML = '<div class="card" style="grid-column:1/-1;"><div class="field-label">Sort your Watch Later list</div><p style="font-size:12px;color:var(--text-2);line-height:1.5;margin-bottom:6px;">Tap an icon to file a video: 🔥 urgent and important, 📅 important, ⚡ urgent, 🗑 neither.</p>' +
+    (un.length ? un.map(v=>row(v, btns(v))).join('') : '<p style="font-size:12px;color:var(--text-3);">' + (later.length ? 'Everything is sorted.' : 'Your Watch Later list is empty.') + '</p>') + '</div>' +
+    Object.keys(QUADS).map(k=>{
+      const vs = later.filter(v=>DB.matrix[v] === k);
+      return '<div class="card" style="margin-top:10px;grid-column:1/-1;"><div class="row-between"><div style="font-weight:700;">' + QUADS[k][0] + '</div><span class="badge">' + vs.length + '</span></div><div style="font-size:11px;color:var(--text-3);margin-bottom:4px;">' + QUADS[k][1] + '</div>' +
+        vs.map(v=>row(v, '<span class="mini-btns"><button data-play="' + v + '">▶</button>' + (k === 'drop' ? '<button data-rmlater="' + v + '" title="Remove from Watch Later">✕</button>' : '') + '<button data-unq="' + v + '" title="Move back">↩</button></span>')).join('') + '</div>';
+    }).join('');
+  el.querySelectorAll('[data-mq]').forEach(b=>b.addEventListener('click', ()=>{ DB.matrix[b.dataset.v] = b.dataset.mq; saveNow(); renderLibrary(); }));
+  el.querySelectorAll('[data-unq]').forEach(b=>b.addEventListener('click', ()=>{ delete DB.matrix[b.dataset.unq]; saveNow(); renderLibrary(); }));
+  el.querySelectorAll('[data-play]').forEach(b=>b.addEventListener('click', ()=>openPlayer(b.dataset.play)));
+  el.querySelectorAll('[data-rmlater]').forEach(b=>b.addEventListener('click', ()=>{ DB.watchLater = DB.watchLater.filter(v=>v !== b.dataset.rmlater); delete DB.matrix[b.dataset.rmlater]; saveNow(); renderLibrary(); }));
+}
+
+function activityByDay(){
+  const days = {};
+  const slot = (d)=>days[d] || (days[d] = {min:0, notes:0, cards:0});
+  for(const d in DB.activity){ let s = 0; for(const k in DB.activity[d]) s += DB.activity[d][k] || 0; slot(d).min += s / 60; }
+  for(const vid in DB.notes) for(const n of DB.notes[vid]){ const t = Date.parse(n.createdAt); if(t) slot(dayKey(t)).notes++; }
+  for(const k in DB.reviews){ const s = DB.reviews[k]; if(s && s.last) slot(dayKey(s.last)).cards++; }
+  for(const d in days) days[d].score = days[d].min + days[d].notes * 2 + days[d].cards * 0.5;
+  return days;
+}
+function renderHeatmap(weeks){
+  const days = activityByDay(), today = new Date(); today.setHours(12, 0, 0, 0);
+  const dow = (today.getDay() + 6) % 7;                      // Monday = 0
+  const start = new Date(today); start.setDate(start.getDate() - dow - (weeks - 1) * 7);
+  const cells = []; let max = 0;
+  for(let w = 0; w < weeks; w++) for(let d = 0; d < 7; d++){
+    const dt = new Date(start); dt.setDate(start.getDate() + w * 7 + d);
+    if(dt > today){ cells.push(null); continue; }
+    const k = dayKey(dt.getTime()), a = days[k];
+    if(a) max = Math.max(max, a.score);
+    cells.push({k, dt, a});
+  }
+  const lvl = (a)=>{ if(!a || a.score <= 0) return 0; const r = a.score / Math.max(max, 1); return r > 0.75 ? 4 : r > 0.5 ? 3 : r > 0.25 ? 2 : 1; };
+  const months = []; let lastM = -1;
+  for(let w = 0; w < weeks; w++){ const c = cells[w * 7]; const m = c ? c.dt.getMonth() : -1; if(m !== lastM && c){ months.push({w, m:c.dt.toLocaleDateString(undefined, {month:'short'})}); lastM = m; } }
+  return '<div class="heat-months" style="grid-template-columns:repeat(' + weeks + ',1fr);">' + months.map(m=>'<span style="grid-column:' + (m.w + 1) + '/span 3;">' + m.m + '</span>').join('') + '</div>' +
+    '<div class="heatmap" style="grid-template-columns:repeat(' + weeks + ',1fr);">' + cells.map(c=>c ? '<i class="hm l' + lvl(c.a) + '" title="' + c.dt.toLocaleDateString(undefined, {weekday:'short', month:'short', day:'numeric'}) + (c.a ? ': ' + Math.round(c.a.min) + ' min watched, ' + c.a.notes + ' notes, ' + c.a.cards + ' cards' : ': no activity') + '"></i>' : '<i class="hm none"></i>').join('') + '</div>' +
+    '<div class="heat-legend">Less <i class="hm l0"></i><i class="hm l1"></i><i class="hm l2"></i><i class="hm l3"></i><i class="hm l4"></i> More</div>';
+}
+function streakDays(days){
+  let n = 0; const d = new Date();
+  if(!(days[dayKey(d.getTime())] && days[dayKey(d.getTime())].score > 0)) d.setDate(d.getDate() - 1);
+  while(days[dayKey(d.getTime())] && days[dayKey(d.getTime())].score > 0){ n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+function renderStatsTab(el){
+  const days = activityByDay(), now = Date.now();
+  let weekMin = 0, total = 0, notesAll = 0;
+  for(const k in days){ total += days[k].min; notesAll += days[k].notes; }
+  for(let i = 0; i < 7; i++) weekMin += (days[dayKey(now - i * DAY)] || {min:0}).min;
+  const weeks = window.innerWidth >= 900 ? 40 : 18;
+  // channels
+  const byCh = {};
+  Object.values(DB.videos).forEach(v=>{
+    if(v.single || v.local) return;
+    const k = v.channelId || v.channelTitle || '?'; const o = byCh[k] || (byCh[k] = {name:v.channelTitle || 'Unknown', n:0, done:0, started:0, secs:0});
+    o.n++; if(DB.completed.includes(v.videoId)) o.done++; if(DB.history.includes(v.videoId) || (DB.resume[v.videoId] && DB.resume[v.videoId].seconds > 5)) o.started++;
+    (DB.sessions[v.videoId] || []).forEach(s=>{ o.secs += Math.max(0, s.e - s.s); });
+  });
+  const chs = Object.values(byCh).sort((a,b)=>(b.done / b.n) - (a.done / a.n) || b.secs - a.secs);
+  el.innerHTML = '<div class="card" style="grid-column:1/-1;"><div class="field-label">Study activity</div>' +
+    '<div class="rv-stats"><div><b>' + Math.round(weekMin) + '</b><span>min this week</span></div><div><b>' + streakDays(days) + '</b><span>day streak</span></div><div><b>' + Math.round(total / 60 * 10) / 10 + '</b><span>hours total</span></div><div><b>' + notesAll + '</b><span>notes</span></div></div>' +
+    '<div style="margin-top:12px;">' + renderHeatmap(weeks) + '</div><p style="font-size:11px;color:var(--text-3);margin-top:8px;">Darker days mean more watching, note-taking and flashcard review. Tap a square for details.</p></div>' +
+    '<div class="card" style="margin-top:10px;grid-column:1/-1;"><div class="field-label">Channel health</div>' +
+    (chs.length ? chs.map(c=>{
+      const pct = c.n ? Math.round(c.done / c.n * 100) : 0, low = c.n >= 5 && c.done === 0;
+      return '<div class="ch-row"><div class="row-between"><span class="cr-t">' + escapeHtml(c.name) + '</span><span class="badge">' + c.done + '/' + c.n + '</span></div><div class="vprog"><i style="width:' + pct + '%"></i></div><small>' + c.started + ' started · ' + Math.round(c.secs / 60) + ' min watched' + (low ? ' · <b style="color:#fb923c;">nothing completed yet, is this one worth keeping?</b>' : '') + '</small></div>';
+    }).join('') : '<p style="font-size:12px;color:var(--text-3);">Add channels and watch a few videos to see this.</p>') + '</div>';
+}
+
+/* quick actions + library shortcuts */
+function gotoLibTab(name){
+  libTab = name;
+  document.querySelectorAll('#libTabs .tab-chip').forEach(c=>c.classList.toggle('active', c.dataset.lib === name));
+  goToPage('page-library');
+}
+document.getElementById('qaReview').addEventListener('click', startReview);
+document.getElementById('qaCourses').addEventListener('click', ()=>gotoLibTab('courses'));
+
+/* ============================================================
    INIT
 ============================================================ */
 function renderAll(){
@@ -3222,7 +4141,7 @@ renderAll();
 renderSyncCard();
 handleSetupHash();
 initSync();
-initPlayerUi();
+initPlayerUi(); initToolSettings(); handleDeepLink();
 
 document.getElementById('channelInput').addEventListener('keydown', e=>{ if(e.key==='Enter' && (e.ctrlKey||e.metaKey)) document.getElementById('channelSubmitBtn').click(); });
 document.getElementById('noteInput').addEventListener('keydown', e=>{ if(e.key==='Enter' && (e.ctrlKey||e.metaKey)) document.getElementById('noteAddBtn').click(); });
