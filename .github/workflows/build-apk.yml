@@ -31,6 +31,13 @@ jobs:
           sed -i 's|<application|<uses-permission android:name="android.permission.CAMERA" />\n    <uses-feature android:name="android.hardware.camera" android:required="false" />\n    <application|' android/app/src/main/AndroidManifest.xml
           grep -n "CAMERA\|camera" android/app/src/main/AndroidManifest.xml
 
+      - name: Apply StudyTube app icon
+        run: |
+          RES=android/app/src/main/res
+          rm -f $RES/mipmap-*/ic_launcher*.png $RES/mipmap-*/ic_launcher*.webp $RES/mipmap-*/ic_launcher*.xml
+          cp -r android-icons/res/* $RES/
+          ls $RES/mipmap-xxxhdpi $RES/mipmap-anydpi-v26
+
       - name: Sync web assets
         run: npx cap sync android
 
