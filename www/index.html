@@ -662,9 +662,18 @@ const IS_NATIVE = !!(window.Capacitor && typeof window.Capacitor.isNativePlatfor
 // Example: "https://studytube-relay.yourname.workers.dev/?url={url}"
 const DEFAULT_RELAY = "";
 
+// Accepts a bare worker address and completes it, so "https://x.workers.dev" just works.
+function normalizeRelay(c){
+  c = (c||"").trim();
+  if(!c) return "";
+  if(c.includes("{url}")) return c;
+  if(!/^https?:\/\//i.test(c)) c = "https://" + c;
+  if(/[?&]url=$/.test(c)) return c + "{url}";
+  c = c.replace(/\/+$/, "");
+  return c + (c.includes("?") ? "&url={url}" : "/?url={url}");
+}
 function customRelayUrl(){
-  const c = (DB.settings.customProxy||"").trim() || DEFAULT_RELAY;
-  return (c && c.includes("{url}")) ? c : "";
+  return normalizeRelay((DB.settings.customProxy||"").trim() || DEFAULT_RELAY);
 }
 function relayBuilders(){
   const list = [];
@@ -1455,7 +1464,7 @@ document.getElementById('proxySelect').addEventListener('change', (e)=>{
   DB.settings.proxy = parseInt(e.target.value,10); saveNow();
 });
 document.getElementById('customProxyInput').addEventListener('change', (e)=>{
-  DB.settings.customProxy = e.target.value.trim(); saveNow(); toast('Relay saved');
+  DB.settings.customProxy = normalizeRelay(e.target.value); e.target.value = DB.settings.customProxy; saveNow(); toast(DB.settings.customProxy ? 'Relay saved' : 'Relay cleared');
 });
 document.getElementById('testRelayBtn').addEventListener('click', async ()=>{
   const el = document.getElementById('relayTestResult');
