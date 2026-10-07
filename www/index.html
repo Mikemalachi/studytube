@@ -2826,7 +2826,11 @@ inkCanvas.addEventListener('pointerdown', (e)=>{
     if(inkSt.tool === 'hand') return;
     if(!inkSt.finger || inkTouches.size > 1){ if(inkSt.cur){ inkSt.cur = null; inkRedraw(); } e.preventDefault(); return; }
   }
-  if(inkSt.tool === 'hand' || inkSt.cur) return;
+  if(inkSt.tool === 'hand') return;
+  if(inkSt.cur){
+    if(e.pointerType === 'touch') return;                 // palm while the pen is down: ignore
+    inkFinishStroke();                                     // stale stroke (the pen-up never arrived): keep it and start fresh
+  }
   e.preventDefault();
   try{ inkCanvas.setPointerCapture(e.pointerId); }catch(err){}
   const [x, y] = inkPt(e);
@@ -2869,8 +2873,13 @@ inkCanvas.addEventListener('pointermove', (e)=>{
 function inkPointerEnd(e){
   if(!inkSt) return;
   if(e.pointerType === 'touch') inkTouches.delete(e.pointerId);
+  if(!inkSt.cur || e.pointerId !== inkSt.pid) return;
+  inkFinishStroke();
+}
+function inkFinishStroke(){
+  if(!inkSt) return;
   const cur = inkSt.cur;
-  if(!cur || e.pointerId !== inkSt.pid) return;
+  if(!cur) return;
   inkSt.cur = null;
   if(cur.k === 'e'){ updateInkUi(); return; }
   if(cur.p.length >= 2){
@@ -2882,7 +2891,11 @@ function inkPointerEnd(e){
   updateInkUi();
 }
 inkCanvas.addEventListener('pointerup', inkPointerEnd);
-inkCanvas.addEventListener('pointercancel', (e)=>{ if(inkSt && inkSt.cur && e.pointerId === inkSt.pid){ inkSt.cur = null; inkRedraw(); } if(e.pointerType === 'touch') inkTouches.delete(e.pointerId); });
+inkCanvas.addEventListener('lostpointercapture', (e)=>{ if(inkSt && inkSt.cur && e.pointerId === inkSt.pid) inkFinishStroke(); });
+window.addEventListener('pointerup', (e)=>{ if(inkSt && inkSt.cur && e.pointerId === inkSt.pid) inkFinishStroke(); }, true);
+window.addEventListener('pointercancel', (e)=>{ if(inkSt && inkSt.cur && e.pointerId === inkSt.pid) inkFinishStroke(); }, true);
+window.addEventListener('blur', ()=>{ if(inkSt && inkSt.cur) inkFinishStroke(); });
+inkCanvas.addEventListener('pointercancel', (e)=>{ if(inkSt && inkSt.cur && e.pointerId === inkSt.pid) inkFinishStroke(); if(e.pointerType === 'touch') inkTouches.delete(e.pointerId); });
 inkCanvas.addEventListener('contextmenu', (e)=>e.preventDefault());
 
 /* toolbar */
