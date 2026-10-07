@@ -1,0 +1,10 @@
+{
+  "appId": "com.studytube.app",
+  "appName": "StudyTube",
+  "webDir": "www",
+  "server": { "androidScheme": "https" },
+  "android": { "backgroundColor": "#060B1A" },
+  "plugins": {
+    "CapacitorHttp": { "enabled": true }
+  }
+}
