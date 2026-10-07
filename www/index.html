@@ -512,6 +512,23 @@ select{background:rgba(255,255,255,0.05); color:var(--text-1); border:1px solid 
         <button class="btn sm block ghost" id="syncOffBtn" style="margin-top:8px;">Turn off sync</button>
         <p style="font-size:11px; color:var(--text-2); line-height:1.5; margin-top:8px;">To add another device, use Show QR in the next card. It carries the sync key too.</p>
       </div>
+      <details id="sheetsGuide" style="margin-top:12px;">
+        <summary style="font-size:13px; cursor:pointer; color:var(--text-2);">Use Google Sheets instead: step by step</summary>
+        <ol style="font-size:12px; color:var(--text-2); line-height:1.7; padding-left:18px; margin-top:8px;">
+          <li>If sync is on, tap <b>Turn off sync</b> first (you can keep or delete the cloud copy).</li>
+          <li>Tap <b>Copy the script</b> below.</li>
+          <li>Open <b>sheets.new</b> in a browser to create a blank Google Sheet.</li>
+          <li>Click <b>Extensions</b>, then <b>Apps Script</b>.</li>
+          <li>Select all the sample code, delete it, and <b>paste</b> the script. Click the save icon.</li>
+          <li>Click <b>Deploy</b>, then <b>New deployment</b>. Click the gear icon and choose <b>Web app</b>.</li>
+          <li>Set <b>Execute as</b> to <b>Me</b> and <b>Who has access</b> to <b>Anyone</b>. Click <b>Deploy</b>.</li>
+          <li>Click <b>Authorize access</b>, choose your account. If Google says the app is unverified, click <b>Advanced</b>, then <b>Go to project</b>, then <b>Allow</b>. It is your own script.</li>
+          <li>Copy the <b>Web app URL</b> (it ends in <code>/exec</code>).</li>
+          <li>Back here, tap <b>Use Google Sheets instead</b> and paste that URL.</li>
+          <li>Tap <b>Turn on sync</b>. Then use Show QR on this device to set up your others.</li>
+        </ol>
+        <button class="btn sm block" id="copySheetsScriptBtn">📋 Copy the script</button>
+      </details>
     </div>
 
     <div class="card" style="margin-bottom:14px;">
@@ -2144,6 +2161,11 @@ document.getElementById("syncJoinBtn").addEventListener("click", ()=>{
   if(!k) return;
   if(!/^[A-Za-z0-9_-]{20,64}$/.test(k)){ toast("That doesn't look like a sync key"); return; }
   startSync(k);
+});
+const SHEETS_SCRIPT = "// StudyTube sync storage. Deploy as a Web app (Execute as: Me, Access: Anyone).\nvar SHEET_NAME = \"StudyTubeSync\";\nvar CHUNK = 40000;               // a Sheets cell holds at most 50,000 characters\nvar MAX_CHARS = 2 * 1024 * 1024;\nvar ID_RE = /^[a-f0-9]{32}$/;\nvar DATA_RE = /^[\\w.\\-]+$/;\n\nfunction sheet_() {\n  var ss = SpreadsheetApp.getActiveSpreadsheet();\n  var sh = ss.getSheetByName(SHEET_NAME);\n  if (!sh) {\n    sh = ss.insertSheet(SHEET_NAME);\n    sh.getRange(1, 1, 1, 4).setValues([[\"id\", \"rev\", \"updated\", \"encrypted data (split across columns)\"]]);\n  }\n  return sh;\n}\nfunction findRow_(sh, id) {\n  var last = sh.getLastRow();\n  if (last < 2) return 0;\n  var ids = sh.getRange(2, 1, last - 1, 1).getValues();\n  for (var i = 0; i < ids.length; i++) if (String(ids[i][0]) === id) return i + 2;\n  return 0;\n}\nfunction read_(sh, row) {\n  if (!row) return { rev: 0, data: null };\n  var vals = sh.getRange(row, 1, 1, sh.getLastColumn()).getValues()[0];\n  var data = vals.slice(3).join(\"\");\n  return { rev: Number(vals[1]) || 0, data: data || null, updated: Number(vals[2]) || 0 };\n}\nfunction json_(obj) {\n  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction doGet(e) {\n  var id = (e && e.parameter && e.parameter.id) || \"\";\n  if (!ID_RE.test(id)) return json_({ error: \"bad-id\" });\n  var sh = sheet_();\n  var cur = read_(sh, findRow_(sh, id));\n  cur.ok = true;\n  return json_(cur);\n}\n\nfunction doPost(e) {\n  var body;\n  try { body = JSON.parse(e.postData.contents); } catch (err) { return json_({ error: \"bad-json\" }); }\n  if (!body || !ID_RE.test(body.id || \"\")) return json_({ error: \"bad-id\" });\n  var lock = LockService.getScriptLock();\n  lock.waitLock(15000);\n  try {\n    var sh = sheet_();\n    var row = findRow_(sh, body.id);\n    if (body.action === \"delete\") {\n      if (row) sh.deleteRow(row);\n      return json_({ ok: true });\n    }\n    if (body.action !== \"put\") return json_({ error: \"bad-action\" });\n    var data = body.data;\n    if (typeof data !== \"string\" || !DATA_RE.test(data)) return json_({ error: \"bad-data\" });\n    if (data.length > MAX_CHARS) return json_({ error: \"too-big\" });\n    var cur = read_(sh, row);\n    // Compare-and-swap: if another device wrote first, return its copy so the app can merge again.\n    if ((Number(body.rev) | 0) !== cur.rev) return json_({ error: \"conflict\", rev: cur.rev, data: cur.data });\n    var chunks = [];\n    for (var i = 0; i < data.length; i += CHUNK) chunks.push(data.substr(i, CHUNK));\n    var rev = cur.rev + 1;\n    if (!row) row = Math.max(sh.getLastRow(), 1) + 1;\n    var width = 3 + chunks.length;\n    if (sh.getLastColumn() >= 4) sh.getRange(row, 4, 1, Math.max(1, sh.getLastColumn() - 3)).clearContent();\n    var range = sh.getRange(row, 1, 1, width);\n    range.setNumberFormat(\"@\");               // keep everything as plain text so Sheets never turns it into numbers\n    range.setValues([[body.id, rev, Date.now()].concat(chunks)]);\n    return json_({ ok: true, rev: rev });\n  } finally {\n    lock.releaseLock();\n  }\n}\n";
+document.getElementById("copySheetsScriptBtn").addEventListener("click", async ()=>{
+  try{ await navigator.clipboard.writeText(SHEETS_SCRIPT); toast("Script copied. Paste it into Apps Script."); }
+  catch(e){ prompt("Copy this script (select all, then copy):", SHEETS_SCRIPT); }
 });
 document.getElementById("syncSheetsBtn").addEventListener("click", ()=>{
   const cur = DB.settings.syncUrl || "";
