@@ -319,6 +319,17 @@ body.ink-open .composer-hide{display:none;}
 .note-item{background:var(--glass); border:1px solid var(--glass-border); border-radius:12px; padding:10px 12px; margin-bottom:8px;}
 .note-item .n-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;}
 .note-item .n-ts{font-size:10.5px; color:var(--cyan); font-weight:700; cursor:pointer;}
+.n-imgs{display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 2px;}
+.n-img{max-width:100%; max-height:240px; border-radius:8px; border:1px solid var(--glass-border); cursor:zoom-in; background:#fff; object-fit:contain;}
+.n-imgs .n-img:only-child{width:100%; max-height:320px;}
+.n-img-miss{font-size:11px; color:var(--text-3); padding:8px;}
+.img-pending{display:flex; gap:6px; flex-wrap:wrap; margin:0 0 6px;}
+.img-pend{position:relative; width:56px; height:56px;}
+.img-pend img{width:100%; height:100%; object-fit:cover; border-radius:8px; border:1px solid var(--glass-border);}
+.img-pend button{position:absolute; top:-6px; right:-6px; width:20px; height:20px; border-radius:50%; border:0; background:#ef4444; color:#fff; font-size:11px; line-height:20px; padding:0;}
+#imgBox{position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.88); display:none; align-items:center; justify-content:center; padding:12px;}
+#imgBox.open{display:flex;}
+#imgBox img{max-width:100%; max-height:100%; border-radius:8px; background:#fff;}
 .note-item .n-text{font-size:12.5px; line-height:1.45; color:var(--text-1); white-space:pre-wrap; word-break:break-word;}
 .note-item .n-actions{display:flex; gap:10px; margin-top:6px;}
 .note-item .n-actions span{font-size:10.5px; color:var(--text-3); cursor:pointer;}
@@ -631,8 +642,11 @@ video#ytMount{background:#000; object-fit:contain;}
           <button class="ts-chip" id="btnCloze" title="Hide the selected words as a flashcard">[…]</button>
           <button class="ts-chip" id="btnTpl" title="Note templates">📋</button>
         </div>
+        <div class="img-pending" id="imgPending" style="display:none;"></div>
         <div class="note-compose">
           <textarea id="noteInput" rows="1" placeholder="Write a note…"></textarea>
+          <button class="btn sm" id="btnImg" title="Add a screenshot or photo (you can also paste one)" aria-label="Add picture">🖼️</button>
+          <input type="file" id="imgFile" accept="image/*" multiple hidden>
           <button class="btn sm" id="btnInk" title="Handwrite a note (Apple Pencil)" aria-label="Handwrite">✍️</button>
           <button class="btn primary sm" id="noteAddBtn">Add</button>
         </div>
@@ -910,6 +924,7 @@ video#ytMount{background:#000; object-fit:contain;}
 <div class="sheet-backdrop" id="sheetTpl"><div class="sheet"><div class="sheet-handle"></div><h3>Note templates</h3><div id="tplList" style="margin-top:8px;"></div></div></div>
 <div class="sheet-backdrop" id="sheetCourse"><div class="sheet" style="max-height:88dvh;overflow-y:auto;"><div class="sheet-handle"></div><div id="courseBody"></div></div></div>
 <div class="sheet-backdrop" id="sheetCoursePick"><div class="sheet"><div class="sheet-handle"></div><h3>Add to a course</h3><div id="coursePickBody" style="margin-top:8px;"></div></div></div>
+<div id="imgBox" role="dialog" aria-label="Picture"><img alt="Screenshot"></div>
 <div id="reviewOverlay" role="dialog" aria-label="Review"><div class="rv-top"><button class="ink-btn" id="rvClose" aria-label="Close" style="width:38px;">✕</button><div style="font-weight:700;">🧠 Review</div><div id="rvCount" style="color:var(--text-3);font-size:12px;min-width:60px;text-align:right;"></div></div><div id="rvBody"></div></div>
 <div class="sheet-backdrop" id="sheetAddChannel">
   <div class="sheet">
@@ -1724,10 +1739,11 @@ function renderCheckpoints(){
 document.getElementById('noteAddBtn').addEventListener('click', ()=>{
   const ta = document.getElementById('noteInput');
   const text = ta.value.trim();
-  if(!text || !currentVideoId) return;
+  if((!text && !pendingImgs.length) || !currentVideoId) return;
   const t = pendingNoteTs !== null ? pendingNoteTs : curTime();
   if(!DB.notes[currentVideoId]) DB.notes[currentVideoId] = [];
-  DB.notes[currentVideoId].push({id:uid(), text, ts:t, pinned:false, createdAt:new Date().toISOString()});
+  DB.notes[currentVideoId].push({id:uid(), text, ts:t, pinned:false, createdAt:new Date().toISOString(), ...(pendingImgs.length ? {imgs:pendingImgs.slice()} : {})});
+  pendingImgs = []; renderPendingImgs();
   ta.value=''; ta.style.height=''; pendingNoteTs = null; refreshTsChip();
   saveNow(); renderNotes();
   const sc = document.querySelector('#page-player .pl-scroll'); if(sc) sc.scrollTop = 0;
@@ -1756,7 +1772,7 @@ function renderNotes(){
   }));
   el.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click', ()=>{
     DB.notes[currentVideoId] = DB.notes[currentVideoId].filter(x=>x.id!==b.dataset.del);
-    saveNow(); renderNotes();
+    imgGc(); saveNow(); renderNotes();
   }));
 }
 
@@ -2019,7 +2035,7 @@ document.getElementById('channelSubmitBtn').addEventListener('click', async ()=>
    SETTINGS / BACKUP
 ============================================================ */
 function exportBackup(){
-  downloadBlob('studytube-backup-'+new Date().toISOString().slice(0,10)+'.json', JSON.stringify(DB,null,2), 'application/json');
+  downloadBlob('studytube-backup-'+new Date().toISOString().slice(0,10)+'.json', JSON.stringify(Object.assign({}, DB, {_images:IMG}),null,2), 'application/json');
   toast('Backup exported');
 }
 document.getElementById('exportBackupBtn').addEventListener('click', exportBackup);
@@ -2033,6 +2049,8 @@ document.getElementById('importFile').addEventListener('change', (e)=>{
     try{
       const incoming = JSON.parse(reader.result);
       if(!confirm('Import this backup? It will replace all current data.')) return;
+      const inImgs = incoming && incoming._images; if(incoming) delete incoming._images;
+      if(inImgs && typeof inImgs === 'object') for(const id in inImgs) if(IMG_ID_RE.test(id) && typeof inImgs[id] === 'string' && IMG_URL_RE.test(inImgs[id])){ IMG[id] = inImgs[id]; imgPut(id, inImgs[id]); }
       DB = Object.assign(loadDB(), incoming);
       saveNow(); renderAll();
       toast('Backup imported');
@@ -2285,9 +2303,11 @@ function syncFlatten(){
   });
   if(stamped){ try{ localStorage.setItem(DB_KEY, JSON.stringify(DB)); }catch(e){} }
   const add = (k,v,vid,idx)=>{ f[k] = v; if(vid) refs.add(vid); if(idx !== undefined) hint[k] = idx; };
+  const imgRef = new Set();
   for(const [vid,arr] of Object.entries(DB.notes)){
     if(!VID_RE.test(vid) || !Array.isArray(arr)) continue;
-    for(const n of arr) if(n && typeof n.id === "string") add("n|"+vid+"|"+n.id, {text:n.text, ts:n.ts, pinned:!!n.pinned, createdAt:n.createdAt, ink:n.ink || undefined}, vid);
+    for(const n of arr) if(n && typeof n.id === "string") { const ids = Array.isArray(n.imgs) ? n.imgs.filter(i=>typeof i === "string" && IMG_ID_RE.test(i)).slice(0,IMG_PER_NOTE) : []; ids.forEach(i=>imgRef.add(i));
+      add("n|"+vid+"|"+n.id, {text:n.text, ts:n.ts, pinned:!!n.pinned, createdAt:n.createdAt, ink:n.ink || undefined, imgs:ids.length ? ids : undefined}, vid); }
   }
   for(const [vid,arr] of Object.entries(DB.checkpoints)){
     if(!VID_RE.test(vid) || !Array.isArray(arr)) continue;
@@ -2324,6 +2344,11 @@ function syncFlatten(){
     add("G|"+en, 1);
     (arr||[]).forEach(vid=>{ if(VID_RE.test(vid)) add("g|"+en+"|"+vid, 1, vid); });
   }
+  imgRef.forEach(id=>{
+    const k = "i|"+id;
+    if(IMG[id]) f[k] = {d:IMG[id]};
+    else{ const cur = SYNC.map[k]; if(cur && !cur.d && cur.v) f[k] = cur.v; }   // not loaded on this device yet: keep what the cloud has, never delete it
+  });
   refs.forEach(vid=>{
     const v = DB.videos[vid];
     if(v) f["v|"+vid] = {channelId:v.channelId||"", channelTitle:v.channelTitle||"", title:v.title||"", published:v.published||"", ...(v.local ? {local:1} : {}), ...(v.single ? {single:1} : {})};
@@ -2375,16 +2400,16 @@ function syncSame(a, b){
 /* ---- rebuild the library from the merged map (validates everything that came from the cloud) ---- */
 function clampStr(x, n){ return typeof x === "string" ? x.slice(0,n) : ""; }
 function syncApply(map){
-  const snap = ()=>JSON.stringify([DB.notes,DB.checkpoints,DB.favorites,DB.watchLater,DB.completed,DB.history,DB.resume,DB.categories,Object.keys(DB.videos).length,DB.reviews,DB.courses,DB.sessions,DB.activity,DB.matrix]);
+  const snap = ()=>JSON.stringify([DB.notes,DB.checkpoints,DB.favorites,DB.watchLater,DB.completed,DB.history,DB.resume,DB.categories,Object.keys(DB.videos).length,DB.reviews,DB.courses,DB.sessions,DB.activity,DB.matrix,Object.keys(IMG).length]);
   const before = snap();
   const notes = {}, cps = {}, favs = [], laters = [], dones = [], hist = [], resume = {}, cats = {}, meta = {};
-  const reviews = {}, courses = {}, sessions = {}, activity = {}, matrix = {};
+  const reviews = {}, courses = {}, sessions = {}, activity = {}, matrix = {}, imgsIn = {};
   for(const k in map){
     const e = map[k];
     if(!e || e.d || typeof k !== "string" || k.length > 400) continue;
     const parts = k.split("|"), c = parts[0], v = e.v;
     if(c === "n" && parts.length === 3 && VID_RE.test(parts[1]) && /^[\w-]{1,40}$/.test(parts[2]) && v && typeof v === "object"){
-      (notes[parts[1]] = notes[parts[1]] || []).push({id:parts[2], text:clampStr(v.text,500000), ts:Number.isFinite(v.ts)?v.ts:0, pinned:!!v.pinned, createdAt:clampStr(v.createdAt,40), ...(sanitizeInk(v.ink) ? {ink:sanitizeInk(v.ink)} : {})});
+      (notes[parts[1]] = notes[parts[1]] || []).push({id:parts[2], text:clampStr(v.text,500000), ts:Number.isFinite(v.ts)?v.ts:0, pinned:!!v.pinned, createdAt:clampStr(v.createdAt,40), ...(sanitizeInk(v.ink) ? {ink:sanitizeInk(v.ink)} : {}), ...(Array.isArray(v.imgs) && v.imgs.some(i=>typeof i === "string" && IMG_ID_RE.test(i)) ? {imgs:v.imgs.filter(i=>typeof i === "string" && IMG_ID_RE.test(i)).slice(0,IMG_PER_NOTE)} : {})});
     }else if(c === "c" && parts.length === 3 && VID_RE.test(parts[1]) && /^[\w-]{1,40}$/.test(parts[2]) && v && Number.isFinite(v.seconds)){
       (cps[parts[1]] = cps[parts[1]] || []).push({id:parts[2], label:clampStr(v.label,60), seconds:Math.max(0,v.seconds), ...(v.pause ? {pause:true} : {})});
     }else if((c === "f" || c === "w" || c === "d") && parts.length === 2 && VID_RE.test(parts[1])){
@@ -2409,6 +2434,8 @@ function syncApply(map){
       (activity[parts[1]] = activity[parts[1]] || {})[parts[2]] = Math.min(86400, v);
     }else if(c === "m" && parts.length === 2 && VID_RE.test(parts[1]) && /^(do|plan|quick|drop)$/.test(v)){
       matrix[parts[1]] = v;
+    }else if(c === "i" && parts.length === 2 && IMG_ID_RE.test(parts[1]) && v && typeof v.d === "string" && v.d.length < 900000 && IMG_URL_RE.test(v.d)){
+      imgsIn[parts[1]] = v.d;
     }
   }
   for(const vid in notes) notes[vid].sort((a,b)=> a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : (a.id < b.id ? -1 : 1));
@@ -2427,6 +2454,8 @@ function syncApply(map){
   DB.resume = resume;
   for(const vid in sessions) sessions[vid].sort((a,b)=>a.at - b.at || (a.id < b.id ? -1 : 1));
   DB.reviews = reviews; DB.courses = courses; DB.sessions = sessions; DB.activity = activity; DB.matrix = matrix;
+  for(const id in imgsIn) if(IMG[id] !== imgsIn[id]){ IMG[id] = imgsIn[id]; delete IMGEL[id]; imgPut(id, imgsIn[id]); }
+  imgGc();
   const outCats = {};
   for(const n in cats) outCats[n] = Array.isArray(cats[n]) ? cats[n].sort(byOldest).map(x=>x.vid) : [];
   DB.categories = outCats;
@@ -2937,6 +2966,7 @@ function noteBodyHtml(vid, n){
   let h = '';
   if(n.ink) h += '<canvas class="ink-thumb" data-ink="' + vid + '|' + n.id + '"></canvas>';
   if(n.text) h += '<div class="n-text">' + clozeHtml(n.text) + '</div>';
+  h += imgsHtml(n);
   return h || '<div class="n-text">(empty)</div>';
 }
 function paintInkThumbs(root){
@@ -3287,6 +3317,7 @@ function exportMarkdown(data){
     d.notes.forEach(n=>{
       md += '- ' + (n.pinned ? '★ ' : '') + '**[' + fmtSecs(n.ts) + '](' + ytLink(d.video.videoId, n.ts) + ')** ' + (n.text || '').replace(/\n/g, '\n  ') + '\n';
       if(n.ink) md += '\n  ![handwritten note](' + inkPngDataUrl(n.ink, 900) + ')\n';
+      (n.imgs || []).forEach(i=>{ if(IMG[i]) md += '\n  ![screenshot](' + IMG[i] + ')\n'; });
     });
     md += '\n';
   });
@@ -3304,6 +3335,7 @@ function exportHtml(data){
     d.notes.forEach(n=>{
       h += '<div class="n"><a class="ts" href="' + ytLink(d.video.videoId, n.ts) + '">' + (n.pinned ? '★ ' : '') + '[' + fmtSecs(n.ts) + ']</a>' + escapeHtml(n.text || '');
       if(n.ink) h += '<img alt="Handwritten note" src="' + inkPngDataUrl(n.ink, 900) + '">';
+      (n.imgs || []).forEach(i=>{ if(IMG[i]) h += '<img alt="Screenshot" src="' + IMG[i] + '">'; });
       h += '</div>';
     });
   });
@@ -3384,7 +3416,12 @@ function composeExportPages(data, o){
         const maxH = pageH - 2 * m - px(160);
         if(inkH > maxH){ inkW = Math.round(inkW * maxH / inkH); inkH = maxH; }
       }
-      const blockH = px(50) + bodyLines.length * px(44) + (inkC ? inkH + px(20) : 0) + px(22);
+      const picEls = (n.imgs || []).map(i=>IMGEL[i]).filter(Boolean).map(im=>{
+        let w = Math.min(contentW - px(20), im.naturalWidth * k * 1.2), hh = w * im.naturalHeight / im.naturalWidth;
+        const mh = pageH - 2 * m - px(160); if(hh > mh){ w = w * mh / hh; hh = mh; }
+        return {im, w:Math.round(w), h:Math.round(hh)};
+      });
+      const blockH = px(50) + bodyLines.length * px(44) + (inkC ? inkH + px(20) : 0) + (picEls.length ? picEls[0].h + px(20) : 0) + px(22);
       ensure(Math.min(blockH, pageH - 2 * m));
       // accent bar + timestamp (link) + small readable url
       const top = y;
@@ -3396,7 +3433,15 @@ function composeExportPages(data, o){
       ctx.fillStyle = '#111827'; ctx.font = font(30);
       bodyLines.forEach(l=>{ ctx.fillText(l, m + px(18), y + px(30)); y += px(44); });
       if(inkC){ y += px(6); ctx.drawImage(inkC, m + px(18), y, inkW, inkH); ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 1; ctx.strokeRect(m + px(18), y, inkW, inkH); y += inkH + px(14); }
-      ctx.fillStyle = '#22d3ee'; ctx.fillRect(m, top, px(5), Math.max(px(40), y - top - px(6)));
+      let barTop = top;
+      picEls.forEach(pe=>{
+        if(y + pe.h + px(14) > pageH - m && y > m + 5){
+          ctx.fillStyle = '#22d3ee'; ctx.fillRect(m, barTop, px(5), Math.max(px(40), y - barTop - px(6)));
+          newPage(); barTop = y;
+        }
+        y += px(6); ctx.drawImage(pe.im, m + px(18), y, pe.w, pe.h); ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 1; ctx.strokeRect(m + px(18), y, pe.w, pe.h); y += pe.h + px(14); mark();
+      });
+      ctx.fillStyle = '#22d3ee'; ctx.fillRect(m, barTop, px(5), Math.max(px(40), y - barTop - px(6)));
       y += px(22); mark();
     });
     y += px(34);
@@ -3478,13 +3523,13 @@ async function exportNotes(format, scope){
   const busy = (t)=>{ if(status) status.textContent = t; };
   try{
     if(format === 'json'){
-      await saveBinary(name + '.json', new Blob([JSON.stringify(data.map(d=>({video:d.video, notes:d.notes, checkpoints:d.checkpoints})), null, 2)], {type:'application/json'}));
+      await saveBinary(name + '.json', new Blob([JSON.stringify(data.map(d=>({video:d.video, notes:d.notes.map(n=>(n.imgs && n.imgs.length) ? Object.assign({}, n, {images:n.imgs.map(i=>IMG[i]).filter(Boolean)}) : n), checkpoints:d.checkpoints})), null, 2)], {type:'application/json'}));
     }else if(format === 'md'){
       await saveBinary(name + '.md', new Blob([exportMarkdown(data)], {type:'text/markdown'}));
     }else if(format === 'html'){
       await saveBinary(name + '.html', new Blob([exportHtml(data)], {type:'text/html'}));
     }else if(format === 'pdf'){
-      busy('Building your PDF…'); await new Promise(r=>setTimeout(r, 30));
+      busy('Building your PDF…'); await preloadExportImgs(data); await new Promise(r=>setTimeout(r, 30));
       const pageW = 1240, pageH = 1754;
       const pages = composeExportPages(data, {pageW, pageH, margin:90});
       pages.forEach((p, i)=>{
@@ -3493,7 +3538,7 @@ async function exportNotes(format, scope){
       });
       await saveBinary(name + '.pdf', new Blob([buildPdf(pages, pageW, pageH)], {type:'application/pdf'}));
     }else if(format === 'png'){
-      busy('Building your image…'); await new Promise(r=>setTimeout(r, 30));
+      busy('Building your image…'); await preloadExportImgs(data); await new Promise(r=>setTimeout(r, 30));
       const pages = composeExportPages(data, {pageW:1100, pageH:9000, margin:60});
       for(let i = 0; i < pages.length; i++){
         const src = pages[i].canvas, h = Math.min(src.height, pages[i].used + 60);
@@ -4246,6 +4291,149 @@ function gotoLibTab(name){
 document.getElementById('qaReview').addEventListener('click', startReview);
 document.getElementById('qaCourses').addEventListener('click', ()=>gotoLibTab('courses'));
 
+
+/* ============================================================
+   SCREENSHOTS IN NOTES: paste, pick, or drop an image. It is shrunk, kept in IndexedDB (not the small
+   localStorage), synced as its own encrypted entry (key "i|id"), and included in every export.
+============================================================ */
+const IMG = {};                 // id -> data URL (in-memory copy of what IndexedDB holds)
+const IMGEL = {};               // id -> decoded <img> (only used while building PDF/PNG exports)
+let imgLoaded = false, pendingImgs = [];
+const IMG_ID_RE = /^[\w-]{6,40}$/, IMG_URL_RE = /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/;
+const IMG_PER_NOTE = 6, IMG_BUDGET = 6 * 1024 * 1024;   // the whole synced blob is capped at 8 MB by the relay
+let imgDbP = null;
+function imgDb(){
+  if(!imgDbP) imgDbP = new Promise((res, rej)=>{
+    try{
+      const r = indexedDB.open('studytube_img', 1);
+      r.onupgradeneeded = ()=>r.result.createObjectStore('i');
+      r.onsuccess = ()=>res(r.result); r.onerror = ()=>rej(r.error);
+    }catch(e){ rej(e); }
+  });
+  return imgDbP;
+}
+function imgPut(id, url){ imgDb().then(db=>{ db.transaction('i', 'readwrite').objectStore('i').put(url, id); }).catch(()=>{}); }
+function imgDel(id){ imgDb().then(db=>{ db.transaction('i', 'readwrite').objectStore('i').delete(id); }).catch(()=>{}); }
+function imgLoadAll(){
+  return imgDb().then(db=>new Promise(res=>{
+    const out = {}, tx = db.transaction('i', 'readonly'), st = tx.objectStore('i'), rq = st.openCursor();
+    rq.onsuccess = ()=>{ const c = rq.result; if(c){ out[c.key] = c.value; c.continue(); } };
+    tx.oncomplete = ()=>res(out); tx.onerror = tx.onabort = ()=>res(out);
+  })).catch(()=>({})).then(all=>{
+    for(const id in all) if(IMG_ID_RE.test(id) && typeof all[id] === 'string' && IMG_URL_RE.test(all[id]) && !IMG[id]) IMG[id] = all[id];
+    imgLoaded = true;
+    if(typeof renderNotes === 'function') renderNotes();
+    if(document.getElementById('page-library').classList.contains('active')) renderLibrary();
+  });
+}
+function imgBytes(){ let n = 0; for(const id in IMG) n += IMG[id].length; return n; }
+function imgRefs(){
+  const s = new Set();
+  for(const vid in DB.notes) for(const n of DB.notes[vid] || []) if(n && Array.isArray(n.imgs)) n.imgs.forEach(i=>s.add(i));
+  pendingImgs.forEach(i=>s.add(i));
+  return s;
+}
+function imgGc(){   // forget pictures no note uses any more
+  if(!imgLoaded) return;
+  const keep = imgRefs();
+  for(const id of Object.keys(IMG)) if(!keep.has(id)){ delete IMG[id]; delete IMGEL[id]; imgDel(id); }
+}
+function imgNewId(){ return 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+
+function loadBitmap(file){
+  if(window.createImageBitmap) return createImageBitmap(file).catch(()=>loadViaImg(file));
+  return loadViaImg(file);
+}
+function loadViaImg(file){
+  return new Promise((res, rej)=>{
+    const u = URL.createObjectURL(file), im = new Image();
+    im.onload = ()=>{ URL.revokeObjectURL(u); res(im); }; im.onerror = ()=>{ URL.revokeObjectURL(u); rej(new Error('bad image')); };
+    im.src = u;
+  });
+}
+async function shrinkImage(file){
+  const bm = await loadBitmap(file), w0 = bm.width || bm.naturalWidth, h0 = bm.height || bm.naturalHeight;
+  if(!w0 || !h0) throw new Error('empty image');
+  for(const [maxSide, q] of [[1400, 0.8], [1100, 0.68], [800, 0.6]]){
+    const s = Math.min(1, maxSide / Math.max(w0, h0));
+    const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w0 * s)); c.height = Math.max(1, Math.round(h0 * s));
+    const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(bm, 0, 0, c.width, c.height);
+    const url = c.toDataURL('image/jpeg', q);
+    if(url.length < 380000 || maxSide === 800) { if(bm.close) bm.close(); return url; }
+  }
+}
+function renderPendingImgs(){
+  const box = document.getElementById('imgPending');
+  box.innerHTML = pendingImgs.map(id=>'<span class="img-pend"><img src="' + (IMG[id] || '') + '" alt=""><button data-rmimg="' + id + '" aria-label="Remove picture">✕</button></span>').join('');
+  box.style.display = pendingImgs.length ? '' : 'none';
+  box.querySelectorAll('[data-rmimg]').forEach(b=>b.addEventListener('click', ()=>{
+    pendingImgs = pendingImgs.filter(i=>i !== b.dataset.rmimg); renderPendingImgs(); imgGc();
+  }));
+}
+async function addImageFiles(files){
+  const list = Array.from(files || []).filter(f=>/^image\//.test(f.type));
+  if(!list.length) return false;
+  if(!currentVideoId){ toast('Open a video first'); return true; }
+  for(const f of list){
+    if(pendingImgs.length >= IMG_PER_NOTE){ toast('Up to ' + IMG_PER_NOTE + ' pictures per note'); break; }
+    try{
+      const url = await shrinkImage(f);
+      if(imgBytes() + url.length > IMG_BUDGET){ toast('Picture storage is full. Delete some old picture notes first.'); break; }
+      const id = imgNewId(); IMG[id] = url; imgPut(id, url); pendingImgs.push(id);
+    }catch(e){ toast('Could not read that picture'); }
+  }
+  renderPendingImgs();
+  return true;
+}
+function imgsHtml(n){
+  if(!n || !Array.isArray(n.imgs) || !n.imgs.length) return '';
+  return '<div class="n-imgs">' + n.imgs.map(id=>IMG[id] ? '<img class="n-img" data-img="' + id + '" src="' + IMG[id] + '" alt="Screenshot">' : '<span class="n-img-miss">🖼️ picture loading…</span>').join('') + '</div>';
+}
+
+/* composer wiring */
+(function(){
+  const ta = document.getElementById('noteInput'), file = document.getElementById('imgFile');
+  document.getElementById('btnImg').addEventListener('click', ()=>file.click());
+  document.getElementById('btnImg').addEventListener('mousedown', (e)=>e.preventDefault());
+  file.addEventListener('change', ()=>{ addImageFiles(file.files); file.value = ''; });
+  const fromClip = (e)=>{
+    const items = (e.clipboardData && e.clipboardData.items) || [], files = [];
+    for(const it of items) if(it.kind === 'file' && /^image\//.test(it.type)){ const f = it.getAsFile(); if(f) files.push(f); }
+    if(!files.length) return;
+    e.preventDefault(); addImageFiles(files);
+  };
+  ta.addEventListener('paste', fromClip);
+  document.addEventListener('paste', (e)=>{
+    const t = e.target, tag = t && t.tagName;
+    if(tag === 'INPUT' || tag === 'TEXTAREA' || (t && t.isContentEditable)) return;
+    if(document.getElementById('page-player').classList.contains('active')) fromClip(e);
+  });
+  const zone = document.querySelector('#page-player .pl-compose');
+  ['dragover', 'dragenter'].forEach(ev=>document.getElementById('page-player').addEventListener(ev, (e)=>{ if(e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files')) e.preventDefault(); }));
+  document.getElementById('page-player').addEventListener('drop', (e)=>{
+    if(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length){ e.preventDefault(); addImageFiles(e.dataTransfer.files); }
+  });
+  /* viewer */
+  const box = document.getElementById('imgBox'), big = box.querySelector('img');
+  const close = ()=>{ box.classList.remove('open'); big.removeAttribute('src'); };
+  document.addEventListener('click', (e)=>{
+    const im = e.target.closest && e.target.closest('img.n-img');
+    if(im && IMG[im.dataset.img]){ big.src = IMG[im.dataset.img]; box.classList.add('open'); }
+  });
+  box.addEventListener('click', close);
+  window.addEventListener('keydown', (e)=>{ if(e.key === 'Escape' && box.classList.contains('open')) close(); });
+  renderPendingImgs();
+})();
+
+/* exports need decoded pictures */
+async function preloadExportImgs(data){
+  const ids = new Set();
+  data.forEach(d=>d.notes.forEach(n=>(n.imgs || []).forEach(i=>ids.add(i))));
+  await Promise.all([...ids].filter(i=>IMG[i] && !IMGEL[i]).map(i=>new Promise(res=>{
+    const im = new Image(); im.onload = ()=>{ IMGEL[i] = im; res(); }; im.onerror = ()=>res(); im.src = IMG[i];
+  })));
+}
+
 /* ============================================================
    INIT
 ============================================================ */
@@ -4261,6 +4449,7 @@ function renderAll(){
 renderAll();
 renderSyncCard();
 handleSetupHash();
+imgLoadAll();
 initSync();
 initPlayerUi(); initToolSettings(); handleDeepLink(); restoreLastVideo();
 

@@ -106,3 +106,6 @@ While a video is playing, pressing Home (or swiping up) shrinks it into a small 
 ### Pop-up video when you leave the app
 - **Android APK:** with a video playing, press Home (or swipe up) and it keeps playing in a Picture-in-Picture pop-up. Needs the APK rebuilt from the latest push. Settings has an on/off switch.
 - **PC browser:** the ⧉ button on the floating player opens the video in a small separate window at the same moment.
+
+### Screenshots in notes
+Tap 🖼️ next to the note box to pick a screenshot or photo, or paste one (Ctrl+V on PC, paste in the note box on iPad), or drag a file onto the player page. Up to 6 per note; they are shrunk, stored on the device, synced (encrypted) and included in the PDF, image, Markdown, HTML and JSON exports and in backups. Tap a picture in a note to enlarge it.
