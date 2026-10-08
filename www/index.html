@@ -738,6 +738,7 @@ video#ytMount{background:#000; object-fit:contain;}
       <div class="field-label">Player</div>
       <label class="set-row"><span>Hide the StudyTube bar while watching (use the back arrow to leave)</span><input type="checkbox" id="setFocusChk"></label>
       <label class="set-row"><span>Mini player: keep the video going when I leave the Player tab</span><input type="checkbox" id="setMiniChk"></label>
+      <label class="set-row"><span>Floating player on Home: show my last video, paused, when the app opens</span><input type="checkbox" id="setHomeMiniChk"></label>
       <label class="set-row"><span>Pause the video while I type a note</span><input type="checkbox" id="setPauseChk"></label>
     </div>
 
@@ -1651,6 +1652,7 @@ function startResumePolling(){
 function saveResumePosition(){
   if(!ytPlayer || !currentVideoId || typeof ytPlayer.getCurrentTime !== 'function') return;
   try{
+    if(ytPlayer.getPlayerState){ const ps = ytPlayer.getPlayerState(); if(ps === 5 || ps === -1) return; }
     const t = ytPlayer.getCurrentTime();
     const dur = ytPlayer.getDuration() || 1;
     DB.resume[currentVideoId] = {seconds:t, updatedAt:new Date().toISOString()};
@@ -2778,6 +2780,7 @@ function syncSettingControls(){
   const set = (id, v)=>{ const el = document.getElementById(id); if(el) el.checked = v; };
   set('setFocusChk', !!DB.settings.focusPlayer);
   set('setMiniChk', DB.settings.miniPlayer !== false);
+  set('setHomeMiniChk', DB.settings.homeMini !== false);
   set('setPauseChk', !!DB.settings.pauseTyping);
   set('pauseTypingChk', !!DB.settings.pauseTyping);
   const ls = document.getElementById('limitSelect'); if(ls) ls.value = String(parseInt(DB.settings.perChannelLimit, 10) || 0);
@@ -2785,6 +2788,7 @@ function syncSettingControls(){
   const bf = document.getElementById('btnFocus'); if(bf) bf.classList.toggle('on', !!DB.settings.focusPlayer);
 }
 document.getElementById('setFocusChk').addEventListener('change', (e)=>{ DB.settings.focusPlayer = e.target.checked; saveNow(); applyFocus(); });
+document.getElementById('setHomeMiniChk').addEventListener('change', (e)=>{ DB.settings.homeMini = e.target.checked; saveNow(); if(e.target.checked) restoreLastVideo(); });
 document.getElementById('setMiniChk').addEventListener('change', (e)=>{ DB.settings.miniPlayer = e.target.checked; saveNow(); });
 ['setPauseChk','pauseTypingChk'].forEach(id=>document.getElementById(id).addEventListener('change', (e)=>{ DB.settings.pauseTyping = e.target.checked; saveNow(); syncSettingControls(); }));
 document.getElementById('limitSelect').addEventListener('change', (e)=>{
@@ -4183,6 +4187,24 @@ function renderStatsTab(el){
     }).join('') : '<p style="font-size:12px;color:var(--text-3);">Add channels and watch a few videos to see this.</p>') + '</div>';
 }
 
+
+/* ---- floating player on Home: bring back the last video, paused, as the mini player ---- */
+function restoreLastVideo(){
+  if(DB.settings.homeMini === false || currentVideoId || basicMode) return;
+  const vid = DB.history.find(v=>DB.videos[v] && !DB.videos[v].local);
+  if(!vid) return;
+  const v = DB.videos[vid], r = DB.resume[vid];
+  currentVideoId = vid; dockClosed = false;
+  document.getElementById('playerTitle').textContent = v.title;
+  document.getElementById('playerChannel').textContent = v.channelTitle || '';
+  document.getElementById('miniTitle').textContent = v.title;
+  pendingNoteTs = null; refreshTsChip(); updatePlayerToggleStates(); renderCheckpoints(); renderNotes(); updateLoopBtn();
+  let startAt = (r && r.seconds) || 0;
+  if(startAt > 10 && DB.settings.rewind !== false && Date.now() - (Date.parse(r.updatedAt) || 0) > 15 * 60000) startAt = Math.max(0, startAt - 7);
+  loadVideoInPlayer(vid, startAt);
+  updateDockMode();
+  setTimeout(()=>{ if(!playerReady && !onPlayerPage()){ hidePlayerFallback(); dockClosed = true; updateDockMode(); } }, 8500);
+}
 /* quick actions + library shortcuts */
 function gotoLibTab(name){
   libTab = name;
@@ -4208,7 +4230,7 @@ renderAll();
 renderSyncCard();
 handleSetupHash();
 initSync();
-initPlayerUi(); initToolSettings(); handleDeepLink();
+initPlayerUi(); initToolSettings(); handleDeepLink(); restoreLastVideo();
 
 document.getElementById('channelInput').addEventListener('keydown', e=>{ if(e.key==='Enter' && (e.ctrlKey||e.metaKey)) document.getElementById('channelSubmitBtn').click(); });
 document.getElementById('noteInput').addEventListener('keydown', e=>{ if(e.key==='Enter' && (e.ctrlKey||e.metaKey)) document.getElementById('noteAddBtn').click(); });
