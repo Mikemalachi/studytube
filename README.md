@@ -96,3 +96,13 @@ Every item has a timestamp. The newest edit wins per item, and deletions are rem
 ## Look and icon
 - Settings → Appearance: accent colour (10 presets or any colour) and 6 backgrounds. Stored on each device.
 - APK icon: `android-icons/` holds the launcher icons. The GitHub workflow copies them over the default icon after `cap add android`. Regenerate from `android-icons/icon-1024.png` if you want a different design. The web/iPad icons are in `www/icons/`.
+
+### Floating player on Home
+When the app opens, your last video appears as the floating mini player (paused, at your resume point). Tap ▶ to continue or ⤢ to open it. Turn this off in Settings ("Floating player on Home").
+
+### Pop-up video on Android (Picture-in-Picture)
+While a video is playing, pressing Home (or swiping up) shrinks it into a small pop-up window that keeps playing over your home screen. Tap it to return to the app. Needs Android 8+. The build workflow patches the manifest and installs `android-native/MainActivity.java`. Turn it off in Settings ("Pop-up video").
+
+### Pop-up video when you leave the app
+- **Android APK:** with a video playing, press Home (or swipe up) and it keeps playing in a Picture-in-Picture pop-up. Needs the APK rebuilt from the latest push. Settings has an on/off switch.
+- **PC browser:** the ⧉ button on the floating player opens the video in a small separate window at the same moment.

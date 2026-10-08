@@ -470,6 +470,9 @@ body.mini-on .page:not(#page-player){padding-bottom:calc(24px + var(--nav-h) + v
 /* Player dock: one iframe that is either docked over the player page or floats as a mini player */
 #playerDock{position:fixed; z-index:30; display:none; flex-direction:column; background:#000; border-radius:var(--radius-md); overflow:hidden; left:0; top:0; width:0; height:0;}
 #playerDock.show{display:flex;}
+body.pip > *:not(#playerDock){visibility:hidden !important;}
+body.pip #playerDock{display:flex !important; left:0 !important; top:0 !important; width:100vw !important; height:100vh !important; border:0 !important; border-radius:0 !important; box-shadow:none !important;}
+body.pip #playerDock .mini-bar{display:none !important;}
 #playerDock.mini{box-shadow:0 12px 34px rgba(0,0,0,.6); border:1px solid var(--glass-border);}
 .mini-bar{display:none; flex:0 0 34px; height:34px; align-items:center; gap:4px; padding:0 5px 0 10px; background:rgba(8,14,32,.97); touch-action:none; cursor:grab;}
 #playerDock.mini .mini-bar{display:flex;}
@@ -738,6 +741,7 @@ video#ytMount{background:#000; object-fit:contain;}
       <div class="field-label">Player</div>
       <label class="set-row"><span>Hide the StudyTube bar while watching (use the back arrow to leave)</span><input type="checkbox" id="setFocusChk"></label>
       <label class="set-row"><span>Mini player: keep the video going when I leave the Player tab</span><input type="checkbox" id="setMiniChk"></label>
+      <label class="set-row" id="setPipRow" style="display:none;"><span>Pop-up video: keep playing in a small window when I leave the app (Android)</span><input type="checkbox" id="setPipChk"></label>
       <label class="set-row"><span>Floating player on Home: show my last video, paused, when the app opens</span><input type="checkbox" id="setHomeMiniChk"></label>
       <label class="set-row"><span>Pause the video while I type a note</span><input type="checkbox" id="setPauseChk"></label>
     </div>
@@ -960,6 +964,7 @@ video#ytMount{background:#000; object-fit:contain;}
   <div class="mini-bar" id="miniBar">
     <div class="mini-title" id="miniTitle"></div>
     <button id="miniPlay" title="Play / pause" aria-label="Play or pause">⏯</button>
+    <button id="miniPop" title="Pop out into its own window" aria-label="Pop out into its own window">⧉</button>
     <button id="miniExpand" title="Open the player" aria-label="Open the player">⤢</button>
     <button id="miniClose" title="Close" aria-label="Close the mini player">✕</button>
   </div>
@@ -2729,6 +2734,15 @@ document.getElementById('miniPlay').addEventListener('click', ()=>{
   try{ if(ytPlayer.getPlayerState() === 1) ytPlayer.pauseVideo(); else ytPlayer.playVideo(); }catch(e){}
 });
 document.getElementById('miniExpand').addEventListener('click', ()=>goToPage('page-player'));
+/* Pop out: a small separate window with the same video at the same moment (desktop browsers) */
+function popOutVideo(){
+  const vid = currentVideoId, p = pl(); if(!vid || DB.videos[vid] && DB.videos[vid].local){ toast('Local files cannot pop out'); return; }
+  let t = 0; try{ t = Math.floor(p.getCurrentTime() || 0); p.pauseVideo(); }catch(e){}
+  const w = window.open('https://www.youtube.com/embed/' + vid + '?start=' + t + '&autoplay=1&rel=0&playsinline=1', 'studytube_pop', 'popup=yes,width=480,height=300,left=' + Math.max(0, screen.width - 520) + ',top=' + Math.max(0, screen.height - 400));
+  if(!w) toast('Allow pop-ups for this site, then try again');
+}
+document.getElementById('miniPop').addEventListener('click', popOutVideo);
+if(window.StudyTubeNative) document.getElementById('miniPop').style.display = 'none';
 document.getElementById('miniClose').addEventListener('click', ()=>{
   saveResumePosition();
   try{ if(ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo(); }catch(e){}
@@ -2780,6 +2794,8 @@ function syncSettingControls(){
   const set = (id, v)=>{ const el = document.getElementById(id); if(el) el.checked = v; };
   set('setFocusChk', !!DB.settings.focusPlayer);
   set('setMiniChk', DB.settings.miniPlayer !== false);
+  set('setPipChk', DB.settings.pip !== false);
+  document.getElementById('setPipRow').style.display = window.StudyTubeNative ? '' : 'none';
   set('setHomeMiniChk', DB.settings.homeMini !== false);
   set('setPauseChk', !!DB.settings.pauseTyping);
   set('pauseTypingChk', !!DB.settings.pauseTyping);
@@ -2788,6 +2804,7 @@ function syncSettingControls(){
   const bf = document.getElementById('btnFocus'); if(bf) bf.classList.toggle('on', !!DB.settings.focusPlayer);
 }
 document.getElementById('setFocusChk').addEventListener('change', (e)=>{ DB.settings.focusPlayer = e.target.checked; saveNow(); applyFocus(); });
+document.getElementById('setPipChk').addEventListener('change', (e)=>{ DB.settings.pip = e.target.checked; saveNow(); pipReport(true); });
 document.getElementById('setHomeMiniChk').addEventListener('change', (e)=>{ DB.settings.homeMini = e.target.checked; saveNow(); if(e.target.checked) restoreLastVideo(); });
 document.getElementById('setMiniChk').addEventListener('change', (e)=>{ DB.settings.miniPlayer = e.target.checked; saveNow(); });
 ['setPauseChk','pauseTypingChk'].forEach(id=>document.getElementById(id).addEventListener('change', (e)=>{ DB.settings.pauseTyping = e.target.checked; saveNow(); syncSettingControls(); }));
@@ -4205,6 +4222,21 @@ function restoreLastVideo(){
   updateDockMode();
   setTimeout(()=>{ if(!playerReady && !onPlayerPage()){ hidePlayerFallback(); dockClosed = true; updateDockMode(); } }, 8500);
 }
+
+/* ---- Android pop-up (Picture-in-Picture): the native shell asks us what is playing and tells us when the pop-up opens ---- */
+let pipSent = null;
+function pipReport(force){
+  const N = window.StudyTubeNative; if(!N || !N.setPlaying) return;
+  let on = false;
+  try{ const p = pl(); on = !!(DB.settings.pip !== false && currentVideoId && p && p.getPlayerState && (p.getPlayerState() === 1 || p.getPlayerState() === 3)); }catch(e){}
+  if(force || on !== pipSent){ pipSent = on; try{ N.setPlaying(on); }catch(e){} }
+}
+window.__stPip = function(on){
+  document.body.classList.toggle('pip', !!on);
+  if(!on){ updateDockMode(); layoutDock(); }
+  setTimeout(()=>window.dispatchEvent(new Event('resize')), 60);
+};
+if(window.StudyTubeNative){ setInterval(()=>pipReport(false), 1000); document.addEventListener('visibilitychange', ()=>pipReport(false)); }
 /* quick actions + library shortcuts */
 function gotoLibTab(name){
   libTab = name;
