@@ -109,3 +109,6 @@ While a video is playing, pressing Home (or swiping up) shrinks it into a small 
 
 ### Screenshots in notes
 Tap 🖼️ next to the note box to pick a screenshot or photo, or paste one (Ctrl+V on PC, paste in the note box on iPad), or drag a file onto the player page. Up to 6 per note; they are shrunk, stored on the device, synced (encrypted) and included in the PDF, image, Markdown, HTML and JSON exports and in backups. Tap a picture in a note to enlarge it.
+
+### Editing notes
+Tap ✏️ Edit on any note in the Player's Notes list. The note turns into a text box right under the video, so you can keep watching. **⏱ Insert time** puts the current video time (like `[2:05]`) into the text at the cursor; **🕒 Note → now** moves the note itself to the current time; 🖼️ adds a picture, ✕ on a picture removes it. Save (or Ctrl+Enter) keeps the changes, Cancel (or Esc) throws them away. A `[m:ss]` in a note is tappable (jumps there) and becomes a link in Markdown and HTML exports. Handwriting is still changed with "✍️ Ink" on the note.

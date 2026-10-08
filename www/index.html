@@ -319,6 +319,11 @@ body.ink-open .composer-hide{display:none;}
 .note-item{background:var(--glass); border:1px solid var(--glass-border); border-radius:12px; padding:10px 12px; margin-bottom:8px;}
 .note-item .n-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;}
 .note-item .n-ts{font-size:10.5px; color:var(--cyan); font-weight:700; cursor:pointer;}
+.n-edit{width:100%; min-height:84px; max-height:260px; resize:vertical; padding:9px 10px; border-radius:10px; border:1px solid var(--cyan); background:rgba(255,255,255,.06); color:var(--text-1); font:inherit; font-size:13px; line-height:1.45; -webkit-user-select:text; user-select:text;}
+.note-item.editing{border-color:var(--cyan);}
+.n-edit-imgs{display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;}
+.n-edit-bar{display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:8px;}
+.n-tsl{color:var(--cyan); font-weight:700; cursor:pointer; text-decoration:underline; text-underline-offset:2px;}
 .n-imgs{display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 2px;}
 .n-img{max-width:100%; max-height:240px; border-radius:8px; border:1px solid var(--glass-border); cursor:zoom-in; background:#fff; object-fit:contain;}
 .n-imgs .n-img:only-child{width:100%; max-height:320px;}
@@ -1753,17 +1758,17 @@ function renderNotes(){
   const notes = (currentVideoId && DB.notes[currentVideoId]) || [];
   updatePlayerCounts();
   if(notes.length===0){ el.innerHTML = '<div class="pl-empty">No notes yet.<br>Type below. The time you started typing is attached automatically.</div>'; return; }
-  el.innerHTML = notes.slice().reverse().map(n=>`
+  el.innerHTML = notes.slice().reverse().map(n=>(editDraft && editDraft.id === n.id && editDraft.vid === currentVideoId) ? noteEditHtml(n) : `
     <div class="note-item" data-nid="${n.id}">
       <div class="n-head"><span class="n-ts" data-jump="${n.ts}">${fmtSecs(n.ts)}</span><span style="font-size:10px;color:var(--text-3);">${timeAgo(n.createdAt)}</span></div>
       ${noteBodyHtml(currentVideoId,n)}
-      <div class="n-actions"><span data-pin="${n.id}">${n.pinned?'★ Pinned':'☆ Pin'}</span>${n.ink?`<span data-inkedit="${n.id}">✍️ Edit</span>`:''}<span data-link="${n.ts}">🔗 Link</span><span data-del="${n.id}">Delete</span></div>
+      <div class="n-actions"><span data-pin="${n.id}">${n.pinned?'★ Pinned':'☆ Pin'}</span><span data-edit="${n.id}">✏️ Edit</span>${n.ink?`<span data-inkedit="${n.id}">✍️ Ink</span>`:''}<span data-link="${n.ts}">🔗 Link</span><span data-del="${n.id}">Delete</span></div>
     </div>`).join('');
   el.querySelectorAll('[data-link]').forEach(b=>b.addEventListener('click', ()=>{
     const u = deepLinkFor(currentVideoId, parseFloat(b.dataset.link));
     (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(()=>toast('App link copied. It opens this moment.'), ()=>prompt('Copy this link', u));
   }));
-  paintInkThumbs(el);
+  paintInkThumbs(el); wireNoteEdit(el);
   el.querySelectorAll('[data-inkedit]').forEach(b=>b.addEventListener('click', ()=>openInk(b.dataset.inkedit)));
   el.querySelectorAll('[data-jump]').forEach(b=>b.addEventListener('click', ()=>{ if(ytPlayer && ytPlayer.seekTo) ytPlayer.seekTo(parseFloat(b.dataset.jump), true); }));
   el.querySelectorAll('[data-pin]').forEach(b=>b.addEventListener('click', ()=>{
@@ -2965,7 +2970,7 @@ function inkToCanvas(ink, widthPx, crop){
 function noteBodyHtml(vid, n){
   let h = '';
   if(n.ink) h += '<canvas class="ink-thumb" data-ink="' + vid + '|' + n.id + '"></canvas>';
-  if(n.text) h += '<div class="n-text">' + clozeHtml(n.text) + '</div>';
+  if(n.text) h += '<div class="n-text">' + stampify(clozeHtml(n.text), vid) + '</div>';
   h += imgsHtml(n);
   return h || '<div class="n-text">(empty)</div>';
 }
@@ -3315,7 +3320,7 @@ function exportMarkdown(data){
     md += '## [' + d.video.title.replace(/[\[\]]/g, '') + '](' + videoLink(d.video.videoId) + ')\n' + (d.video.channelTitle ? d.video.channelTitle + '\n' : '') + '\n';
     if(d.checkpoints.length){ md += '**Checkpoints:** ' + d.checkpoints.map(c=>'[' + fmtSecs(c.seconds) + '](' + ytLink(d.video.videoId, c.seconds) + ')').join(' · ') + '\n\n'; }
     d.notes.forEach(n=>{
-      md += '- ' + (n.pinned ? '★ ' : '') + '**[' + fmtSecs(n.ts) + '](' + ytLink(d.video.videoId, n.ts) + ')** ' + (n.text || '').replace(/\n/g, '\n  ') + '\n';
+      md += '- ' + (n.pinned ? '★ ' : '') + '**[' + fmtSecs(n.ts) + '](' + ytLink(d.video.videoId, n.ts) + ')** ' + (n.text || '').replace(STAMP_RE, (all, hh, mm, ss)=>'[' + all.slice(1, -1) + '](' + ytLink(d.video.videoId, stampSecs(hh, mm, ss)) + ')').replace(/\n/g, '\n  ') + '\n';
       if(n.ink) md += '\n  ![handwritten note](' + inkPngDataUrl(n.ink, 900) + ')\n';
       (n.imgs || []).forEach(i=>{ if(IMG[i]) md += '\n  ![screenshot](' + IMG[i] + ')\n'; });
     });
@@ -3333,7 +3338,7 @@ function exportHtml(data){
     h += '<h2><a href="' + videoLink(d.video.videoId) + '">' + escapeHtml(d.video.title) + '</a></h2><div class="ch">' + escapeHtml(d.video.channelTitle || '') + '</div>';
     if(d.checkpoints.length) h += '<div>📍 ' + d.checkpoints.map(c=>'<a class="ts cp" href="' + ytLink(d.video.videoId, c.seconds) + '">' + fmtSecs(c.seconds) + '</a>').join('') + '</div>';
     d.notes.forEach(n=>{
-      h += '<div class="n"><a class="ts" href="' + ytLink(d.video.videoId, n.ts) + '">' + (n.pinned ? '★ ' : '') + '[' + fmtSecs(n.ts) + ']</a>' + escapeHtml(n.text || '');
+      h += '<div class="n"><a class="ts" href="' + ytLink(d.video.videoId, n.ts) + '">' + (n.pinned ? '★ ' : '') + '[' + fmtSecs(n.ts) + ']</a>' + escapeHtml(n.text || '').replace(STAMP_RE, (all, hh, mm, ss)=>'<a class="ts" href="' + ytLink(d.video.videoId, stampSecs(hh, mm, ss)) + '">' + all + '</a>');
       if(n.ink) h += '<img alt="Handwritten note" src="' + inkPngDataUrl(n.ink, 900) + '">';
       (n.imgs || []).forEach(i=>{ if(IMG[i]) h += '<img alt="Screenshot" src="' + IMG[i] + '">'; });
       h += '</div>';
@@ -4331,6 +4336,7 @@ function imgRefs(){
   const s = new Set();
   for(const vid in DB.notes) for(const n of DB.notes[vid] || []) if(n && Array.isArray(n.imgs)) n.imgs.forEach(i=>s.add(i));
   pendingImgs.forEach(i=>s.add(i));
+  if(typeof editDraft !== 'undefined' && editDraft) editDraft.imgs.forEach(i=>s.add(i));
   return s;
 }
 function imgGc(){   // forget pictures no note uses any more
@@ -4370,19 +4376,20 @@ function renderPendingImgs(){
     pendingImgs = pendingImgs.filter(i=>i !== b.dataset.rmimg); renderPendingImgs(); imgGc();
   }));
 }
-async function addImageFiles(files){
+async function addImageFiles(files, list0){
+  const list1 = list0 || pendingImgs;
   const list = Array.from(files || []).filter(f=>/^image\//.test(f.type));
   if(!list.length) return false;
   if(!currentVideoId){ toast('Open a video first'); return true; }
   for(const f of list){
-    if(pendingImgs.length >= IMG_PER_NOTE){ toast('Up to ' + IMG_PER_NOTE + ' pictures per note'); break; }
+    if(list1.length >= IMG_PER_NOTE){ toast('Up to ' + IMG_PER_NOTE + ' pictures per note'); break; }
     try{
       const url = await shrinkImage(f);
       if(imgBytes() + url.length > IMG_BUDGET){ toast('Picture storage is full. Delete some old picture notes first.'); break; }
-      const id = imgNewId(); IMG[id] = url; imgPut(id, url); pendingImgs.push(id);
+      const id = imgNewId(); IMG[id] = url; imgPut(id, url); list1.push(id);
     }catch(e){ toast('Could not read that picture'); }
   }
-  renderPendingImgs();
+  if(list1 === pendingImgs) renderPendingImgs();
   return true;
 }
 function imgsHtml(n){
@@ -4433,6 +4440,87 @@ async function preloadExportImgs(data){
     const im = new Image(); im.onload = ()=>{ IMGEL[i] = im; res(); }; im.onerror = ()=>res(); im.src = IMG[i];
   })));
 }
+
+/* ============================================================
+   EDIT SAVED NOTES (in place, with the video still visible) + [m:ss] time stamps inside note text
+============================================================ */
+let editDraft = null;     // {vid, id, text, ts, imgs:[...]} while a note is being edited
+const STAMP_RE = /\[(?:(\d{1,2}):)?(\d{1,2}):(\d{2})\]/g;
+const stampSecs = (h, m, s)=>(parseInt(h || '0', 10) * 3600) + parseInt(m, 10) * 60 + parseInt(s, 10);
+function stampify(html, vid){   // turn [1:23] in already-escaped text into tappable chips
+  return html.replace(STAMP_RE, (all, h, m, s)=>'<span class="n-tsl" data-vid="' + vid + '" data-sec="' + stampSecs(h, m, s) + '">' + all + '</span>');
+}
+function noteEditHtml(n){
+  const d = editDraft;
+  return '<div class="note-item editing" data-nid="' + n.id + '">' +
+    '<div class="n-head"><span class="n-ts">⏱ ' + fmtSecs(d.ts) + '</span><span style="font-size:10px;color:var(--text-3);">Editing</span></div>' +
+    (n.ink ? '<div style="font-size:11px;color:var(--text-3);margin:2px 0 6px;">✍️ This note has handwriting. Use “Ink” on the note to change it.</div>' : '') +
+    '<textarea class="n-edit" id="noteEditTa" rows="3" placeholder="Note text…">' + escapeHtml(d.text) + '</textarea>' +
+    '<div class="n-edit-imgs">' + d.imgs.map(id=>'<span class="img-pend"><img src="' + (IMG[id] || '') + '" alt=""><button data-neimgrm="' + id + '" aria-label="Remove picture">✕</button></span>').join('') + '</div>' +
+    '<div class="n-edit-bar">' +
+      '<button class="btn sm" id="neStamp" title="Put the current video time into the text">⏱ Insert time</button>' +
+      '<button class="btn sm" id="neSetTs" title="Move this note to the current video time">🕒 Note → now</button>' +
+      '<button class="btn sm" id="neImg" title="Add a picture">🖼️</button>' +
+      '<span style="flex:1 0 100%;height:0"></span><button class="btn sm" id="neCancel" style="margin-left:auto">Cancel</button><button class="btn primary sm" id="neSave">Save</button>' +
+    '</div></div>';
+}
+function startEditNote(vid, id){
+  const n = (DB.notes[vid] || []).find(x=>x.id === id); if(!n) return;
+  if(editDraft) cancelEditNote(true);
+  editDraft = {vid, id, text:n.text || '', ts:n.ts || 0, imgs:Array.isArray(n.imgs) ? n.imgs.slice() : []};
+  renderNotes();
+  const ta = document.getElementById('noteEditTa');
+  if(ta){ ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); ta.scrollIntoView({block:'nearest'}); }
+}
+function cancelEditNote(silent){
+  editDraft = null; imgGc();
+  if(!silent) renderNotes();
+}
+function saveEditNote(){
+  const d = editDraft; if(!d) return;
+  const n = (DB.notes[d.vid] || []).find(x=>x.id === d.id);
+  const ta = document.getElementById('noteEditTa'); if(ta) d.text = ta.value;
+  if(!n){ cancelEditNote(); return; }
+  const text = d.text.trim();
+  if(!text && !n.ink && !d.imgs.length){ toast('A note needs some text, a picture or handwriting'); return; }
+  n.text = text; n.ts = d.ts;
+  if(d.imgs.length) n.imgs = d.imgs.slice(); else delete n.imgs;
+  editDraft = null; imgGc(); saveNow(); renderNotes(); toast('Note updated');
+}
+function wireNoteEdit(el){
+  el.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click', ()=>startEditNote(currentVideoId, b.dataset.edit)));
+  if(!editDraft) return;
+  const d = editDraft, ta = document.getElementById('noteEditTa'); if(!ta) return;
+  ta.addEventListener('input', ()=>{ d.text = ta.value; });
+  ta.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape'){ cancelEditNote(); }
+    else if(e.key === 'Enter' && (e.ctrlKey || e.metaKey)){ e.preventDefault(); saveEditNote(); }
+  });
+  const keep = (id)=>document.getElementById(id).addEventListener('mousedown', (e)=>e.preventDefault());   // do not steal the caret
+  ['neStamp', 'neSetTs', 'neImg'].forEach(keep);
+  document.getElementById('neStamp').addEventListener('click', ()=>{
+    const t = Math.max(0, Math.floor(curTime())), s = '[' + fmtSecs(t) + '] ';
+    const a = ta.selectionStart, b = ta.selectionEnd, v = ta.value;
+    ta.value = v.slice(0, a) + s + v.slice(b); d.text = ta.value;
+    ta.focus(); ta.setSelectionRange(a + s.length, a + s.length);
+  });
+  document.getElementById('neSetTs').addEventListener('click', ()=>{ d.ts = Math.max(0, Math.floor(curTime())); toast('Note time set to ' + fmtSecs(d.ts)); el.querySelector('.note-item.editing .n-ts').textContent = '⏱ ' + fmtSecs(d.ts); });
+  document.getElementById('neCancel').addEventListener('click', ()=>cancelEditNote());
+  document.getElementById('neSave').addEventListener('click', saveEditNote);
+  document.getElementById('neImg').addEventListener('click', ()=>{
+    const f = document.createElement('input'); f.type = 'file'; f.accept = 'image/*'; f.multiple = true;
+    f.onchange = async ()=>{ d.text = ta.value; await addImageFiles(f.files, d.imgs); renderNotes(); const t2 = document.getElementById('noteEditTa'); if(t2) t2.focus(); };
+    f.click();
+  });
+  el.querySelectorAll('[data-neimgrm]').forEach(b=>b.addEventListener('click', ()=>{ d.text = ta.value; d.imgs = d.imgs.filter(i=>i !== b.dataset.neimgrm); renderNotes(); }));
+}
+/* tap a [m:ss] in a note: jump there (or open that video at that time) */
+document.addEventListener('click', (e)=>{
+  const s = e.target.closest && e.target.closest('.n-tsl'); if(!s) return;
+  const sec = parseInt(s.dataset.sec, 10), vid = s.dataset.vid;
+  if(vid === currentVideoId && pl() && pl().seekTo){ pl().seekTo(sec, true); }
+  else openVideoAt(vid, sec);
+});
 
 /* ============================================================
    INIT
