@@ -764,7 +764,6 @@ video#ytMount{background:#000; object-fit:contain;}
       <label class="set-row"><span>Mini player: keep the video going when I leave the Player tab</span><input type="checkbox" id="setMiniChk"></label>
       <label class="set-row" id="setPipRow" style="display:none;"><span>Pop-up video: keep playing in a small window when I leave the app (Android)</span><input type="checkbox" id="setPipChk"></label>
       <label class="set-row"><span>YouTube player (use Compatibility if the video is black)</span><select id="setPlayerMode"><option value="auto">Automatic</option><option value="direct">Direct</option><option value="proxy">Compatibility</option></select></label>
-      <label class="set-row"><span>Floating player on Home: show my last video, paused, when the app opens</span><input type="checkbox" id="setHomeMiniChk"></label>
       <label class="set-row"><span>Pause the video while I type a note</span><input type="checkbox" id="setPauseChk"></label>
     </div>
 
@@ -2904,7 +2903,6 @@ function syncSettingControls(){
   set('setMiniChk', DB.settings.miniPlayer !== false);
   set('setPipChk', DB.settings.pip !== false);
   document.getElementById('setPipRow').style.display = window.StudyTubeNative ? '' : 'none';
-  set('setHomeMiniChk', DB.settings.homeMini !== false);
   { const pm = document.getElementById('setPlayerMode'); if(pm) pm.value = DB.settings.playerMode || 'auto'; }
   set('setPauseChk', !!DB.settings.pauseTyping);
   set('pauseTypingChk', !!DB.settings.pauseTyping);
@@ -2918,7 +2916,6 @@ document.getElementById('setPlayerMode').addEventListener('change', (e)=>{
   DB.settings.playerMode = e.target.value; modeNow = null; autoProxy = false; saveNow();
   if(currentVideoId && !(ytPlayer && ytPlayer.__local)){ const t = (pl() && pl().getCurrentTime && pl().getCurrentTime()) || 0; hidePlayerFallback(); loadVideoInPlayer(currentVideoId, t); }
 });
-document.getElementById('setHomeMiniChk').addEventListener('change', (e)=>{ DB.settings.homeMini = e.target.checked; saveNow(); if(e.target.checked) restoreLastVideo(); });
 document.getElementById('setMiniChk').addEventListener('change', (e)=>{ DB.settings.miniPlayer = e.target.checked; saveNow(); });
 ['setPauseChk','pauseTypingChk'].forEach(id=>document.getElementById(id).addEventListener('change', (e)=>{ DB.settings.pauseTyping = e.target.checked; saveNow(); syncSettingControls(); }));
 document.getElementById('limitSelect').addEventListener('change', (e)=>{
@@ -4341,38 +4338,6 @@ function renderStatsTab(el){
 }
 
 
-/* ---- floating player on Home: bring back the last video, paused, as the mini player ---- */
-function restoreLastVideo(){
-  if(DB.settings.homeMini === false || currentVideoId || basicMode) return;
-  const vid = DB.history.find(v=>DB.videos[v] && !DB.videos[v].local);
-  if(!vid) return;
-  const v = DB.videos[vid], r = DB.resume[vid];
-  currentVideoId = vid; dockClosed = false;
-  document.getElementById('playerTitle').textContent = v.title;
-  document.getElementById('playerChannel').textContent = v.channelTitle || '';
-  document.getElementById('miniTitle').textContent = v.title;
-  pendingNoteTs = null; refreshTsChip(); updatePlayerToggleStates(); renderCheckpoints(); renderNotes(); updateLoopBtn();
-  let startAt = (r && r.seconds) || 0;
-  if(startAt > 10 && DB.settings.rewind !== false && Date.now() - (Date.parse(r.updatedAt) || 0) > 15 * 60000) startAt = Math.max(0, startAt - 7);
-  loadVideoInPlayer(vid, startAt);
-  updateDockMode();
-  setTimeout(()=>{ if(!playerReady && !onPlayerPage()){ hidePlayerFallback(); dockClosed = true; updateDockMode(); } }, 8500);
-}
-
-/* ---- Android pop-up (Picture-in-Picture): the native shell asks us what is playing and tells us when the pop-up opens ---- */
-let pipSent = null;
-function pipReport(force){
-  const N = window.StudyTubeNative; if(!N || !N.setPlaying) return;
-  let on = false;
-  try{ const p = pl(); on = !!(DB.settings.pip !== false && currentVideoId && p && p.getPlayerState && (p.getPlayerState() === 1 || p.getPlayerState() === 3)); }catch(e){}
-  if(force || on !== pipSent){ pipSent = on; try{ N.setPlaying(on); }catch(e){} }
-}
-window.__stPip = function(on){
-  document.body.classList.toggle('pip', !!on);
-  if(!on){ updateDockMode(); layoutDock(); }
-  setTimeout(()=>window.dispatchEvent(new Event('resize')), 60);
-};
-if(window.StudyTubeNative){ setInterval(()=>pipReport(false), 1000); document.addEventListener('visibilitychange', ()=>pipReport(false)); }
 /* quick actions + library shortcuts */
 function gotoLibTab(name){
   libTab = name;
@@ -4625,7 +4590,7 @@ renderSyncCard();
 handleSetupHash();
 imgLoadAll();
 initSync();
-initPlayerUi(); initToolSettings(); handleDeepLink(); restoreLastVideo();
+initPlayerUi(); initToolSettings(); handleDeepLink();
 
 document.getElementById('channelInput').addEventListener('keydown', e=>{ if(e.key==='Enter' && (e.ctrlKey||e.metaKey)) document.getElementById('channelSubmitBtn').click(); });
 document.getElementById('noteInput').addEventListener('keydown', e=>{ if(e.key==='Enter' && (e.ctrlKey||e.metaKey)) document.getElementById('noteAddBtn').click(); });
