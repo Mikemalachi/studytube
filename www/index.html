@@ -445,6 +445,7 @@ select{background:rgba(255,255,255,0.05); color:var(--text-1); border:1px solid 
 .pl-compose .note-compose textarea{min-height:44px; max-height:110px;}
 .set-row{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 0; font-size:12.5px; color:var(--text-1); border-top:1px solid var(--glass-border); line-height:1.4;}
 .set-row:first-of-type{border-top:none;}
+.set-row select{background:rgba(255,255,255,.08); color:var(--text-1); border:1px solid var(--glass-border); border-radius:8px; padding:6px 8px; font-size:12px; max-width:150px; flex:0 0 auto;}
 .set-row input{width:20px; height:20px; accent-color:var(--cyan); flex:0 0 auto;}
 
 /* Focus: hide the StudyTube bars while on the player */
@@ -644,6 +645,7 @@ video#ytMount{background:#000; object-fit:contain;}
         <div class="pl-compose-top">
           <button class="ts-chip" id="noteTsChip" title="This time is attached to your note. Tap to set it to now.">⏱ 0:00</button>
           <label class="pt-chip"><input type="checkbox" id="pauseTypingChk"> Pause while typing</label>
+          <button class="ts-chip" id="btnStamp" title="Put the current video time into the note, like [2:05]">[⏱]</button>
           <button class="ts-chip" id="btnCloze" title="Hide the selected words as a flashcard">[…]</button>
           <button class="ts-chip" id="btnTpl" title="Note templates">📋</button>
         </div>
@@ -761,6 +763,7 @@ video#ytMount{background:#000; object-fit:contain;}
       <label class="set-row"><span>Hide the StudyTube bar while watching (use the back arrow to leave)</span><input type="checkbox" id="setFocusChk"></label>
       <label class="set-row"><span>Mini player: keep the video going when I leave the Player tab</span><input type="checkbox" id="setMiniChk"></label>
       <label class="set-row" id="setPipRow" style="display:none;"><span>Pop-up video: keep playing in a small window when I leave the app (Android)</span><input type="checkbox" id="setPipChk"></label>
+      <label class="set-row"><span>YouTube player (use Compatibility if the video is black)</span><select id="setPlayerMode"><option value="auto">Automatic</option><option value="direct">Direct</option><option value="proxy">Compatibility</option></select></label>
       <label class="set-row"><span>Floating player on Home: show my last video, paused, when the app opens</span><input type="checkbox" id="setHomeMiniChk"></label>
       <label class="set-row"><span>Pause the video while I type a note</span><input type="checkbox" id="setPauseChk"></label>
     </div>
@@ -1567,10 +1570,14 @@ function showPlayerFallback(title, detail){
   el.innerHTML = '<div class="fb-title">'+escapeHtml(title)+'</div>' +
     (detail ? '<div class="fb-sub">'+escapeHtml(detail)+'</div>' : '') +
     '<div class="mini-btns"><button id="fbOpenYT">▶️ Open in YouTube</button>' +
+    ((ytPlayer && ytPlayer.__remote) ? '<button id="fbDirect">Try direct player</button>' : '<button id="fbCompat">Try compatibility player</button>') +
     (basicMode ? '' : '<button id="fbBasic">Try basic player</button>') + '</div>';
   el.classList.add('show');
   const o = document.getElementById('fbOpenYT');
   if(o) o.onclick = ()=>{ if(currentVideoId) window.open("https://www.youtube.com/watch?v="+currentVideoId, '_blank'); };
+  const retry = (m)=>()=>{ modeNow = m; hidePlayerFallback(); loadVideoInPlayer(currentVideoId, (DB.resume[currentVideoId] && DB.resume[currentVideoId].seconds) || 0); };
+  const fd = document.getElementById('fbDirect'); if(fd) fd.onclick = retry('direct');
+  const fc = document.getElementById('fbCompat'); if(fc) fc.onclick = retry('proxy');
   const bb = document.getElementById('fbBasic');
   if(bb) bb.onclick = ()=>{ basicMode = true; hidePlayerFallback(); loadVideoInPlayer(currentVideoId, (DB.resume[currentVideoId] && DB.resume[currentVideoId].seconds) || 0); };
 }
@@ -1582,6 +1589,7 @@ function playerErrorMessage(code){
 }
 function onPlayerError(e){
   clearTimeout(apiWatchdog);
+  if(e && e.data === 153 && modeIs('auto') && !autoProxy && !(ytPlayer && ytPlayer.__remote)){ autoProxy = true; toast('Switching to the compatibility player…'); loadVideoInPlayer(currentVideoId, (DB.resume[currentVideoId] && DB.resume[currentVideoId].seconds) || 0); return; }
   const m = playerErrorMessage(e && e.data);
   showPlayerFallback(m[0], m[1]);
 }
@@ -1600,13 +1608,79 @@ function renderBasicPlayer(videoId, startAt){
   wrap.insertBefore(f, wrap.firstChild);
   toast('Basic player: resume and note timestamps are off');
 }
+
+/* ---- compatibility player: YouTube embedded through a page on the real site (fixes black screen / error 153 in the app) ---- */
+const PROXY_DEFAULT = 'https://mikemalachi.github.io/studytube/yt.html';
+let autoProxy = false, modeNow = null;
+function isNativeApp(){ return !!(window.StudyTubeNative || (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())); }
+function playerMode(){ return modeNow || DB.settings.playerMode || 'auto'; }
+function modeIs(m){ return (DB.settings.playerMode || 'auto') === m && !modeNow; }
+function proxyWanted(){
+  const m = playerMode();
+  if(m === 'proxy') return true;
+  if(m === 'direct') return false;
+  return autoProxy || isNativeApp();
+}
+function proxyBase(){
+  if(DB.settings.proxyUrl && /^https?:\/\//.test(DB.settings.proxyUrl)) return DB.settings.proxyUrl;
+  if(/^https?:$/.test(location.protocol) && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') return new URL('yt.html', location.href).href;
+  return PROXY_DEFAULT;
+}
+function makeRemoteAdapter(iframe, origin, cb){
+  const st = {s:-1, t:0, d:0, r:1, at:Date.now(), rates:[0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]};
+  const post = (o)=>{ try{ iframe.contentWindow.postMessage(Object.assign({stp:1}, o), origin); }catch(e){} };
+  const onMsg = (e)=>{
+    if(e.source !== iframe.contentWindow) return;
+    const m = e.data; if(!m || m.stp !== 1) return;
+    if(m.ev === 'tick'){ st.s = m.s; st.t = m.t; st.d = m.d; st.r = m.r; st.at = Date.now(); }
+    else if(m.ev === 'ready'){ if(Array.isArray(m.rates) && m.rates.length) st.rates = m.rates.filter(x=>typeof x === 'number'); cb.ready(); }
+    else if(m.ev === 'state'){ st.s = m.s; st.at = Date.now(); cb.state(m.s); }
+    else if(m.ev === 'error'){ cb.error(m.code); }
+  };
+  window.addEventListener('message', onMsg);
+  return {__remote:true,
+    getCurrentTime:()=>st.t + (st.s === 1 ? Math.min(2, (Date.now() - st.at) / 1000) * st.r : 0),
+    getDuration:()=>st.d, getPlayerState:()=>st.s,
+    seekTo:(s)=>{ st.t = Math.max(0, s); st.at = Date.now(); post({cmd:'seek', t:s}); },
+    playVideo:()=>post({cmd:'play'}), pauseVideo:()=>{ st.s = 2; post({cmd:'pause'}); },
+    setPlaybackRate:(r)=>{ st.r = r; post({cmd:'rate', r}); }, getPlaybackRate:()=>st.r, getAvailablePlaybackRates:()=>st.rates,
+    loadVideoById:(o)=>{ st.t = o.startSeconds || 0; st.at = Date.now(); post({cmd:'load', id:o.videoId, start:o.startSeconds || 0}); },
+    destroy:()=>{ window.removeEventListener('message', onMsg); try{ iframe.remove(); }catch(e){} }};
+}
+function loadViaProxy(videoId, startAt){
+  clearTimeout(apiWatchdog);
+  apiWatchdog = setTimeout(()=>{
+    if(!playerReady) showPlayerFallback("The compatibility player didn't start.", "It needs an internet connection and your StudyTube site to be published. Try the direct player, or open it in YouTube.");
+  }, PLAYER_TIMEOUT_MS + 5000);
+  if(ytPlayer && ytPlayer.__remote){ ytPlayer.loadVideoById({videoId, startSeconds:startAt}); return; }
+  if(ytPlayer){ try{ ytPlayer.destroy(); }catch(e){} ytPlayer = null; }
+  playerReady = false; pendingVideo = null; clearInterval(resumePollTimer);
+  const wrap = document.getElementById('playerWrap'), old = document.getElementById('ytMount'); if(old) old.remove();
+  const base = proxyBase(), u = new URL(base);
+  u.searchParams.set('v', videoId); u.searchParams.set('start', String(Math.floor(startAt || 0)));
+  const f = document.createElement('iframe');
+  f.id = 'ytMount'; f.src = u.href;
+  f.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture; fullscreen');
+  f.setAttribute('allowfullscreen', ''); f.setAttribute('referrerpolicy', 'no-referrer-when-downgrade');
+  wrap.insertBefore(f, wrap.firstChild);
+  ytPlayer = makeRemoteAdapter(f, u.origin, {
+    ready:()=>{ playerReady = true; clearTimeout(apiWatchdog); hidePlayerFallback(); startResumePolling(); applyRate(); },
+    state:(s)=>onPlayerStateChange({data:s}),
+    error:(c)=>{ clearTimeout(apiWatchdog); const m = playerErrorMessage(c); showPlayerFallback(m[0], m[1]); }
+  });
+}
 function loadVideoInPlayer(videoId, startAt){
   if(DB.videos[videoId] && DB.videos[videoId].local){ loadLocalVideo(videoId, startAt); return; }
   if(ytPlayer && ytPlayer.__local) teardownLocal();
   if(basicMode){ renderBasicPlayer(videoId, startAt); return; }
+  if(ytPlayer && ytPlayer.__remote && !proxyWanted()){ try{ ytPlayer.destroy(); }catch(e){} ytPlayer = null; playerReady = false; }
+  if(proxyWanted()){ loadViaProxy(videoId, startAt); return; }
   clearTimeout(apiWatchdog);
   apiWatchdog = setTimeout(()=>{
-    if(!playerReady) showPlayerFallback("The player didn't start.", "It may be blocked on this network or app. Try the basic player, or open it in YouTube.");
+    if(!playerReady){
+      if(modeIs('auto') && !autoProxy){ autoProxy = true; toast('Switching to the compatibility player…'); loadVideoInPlayer(currentVideoId || videoId, startAt); return; }
+      showPlayerFallback("The player didn't start.", "It may be blocked on this network or app. Try the basic player, or open it in YouTube.");
+    }
   }, PLAYER_TIMEOUT_MS);
   const myLoad = ++loadToken;
   ensureYTApi(()=>{
@@ -2831,6 +2905,7 @@ function syncSettingControls(){
   set('setPipChk', DB.settings.pip !== false);
   document.getElementById('setPipRow').style.display = window.StudyTubeNative ? '' : 'none';
   set('setHomeMiniChk', DB.settings.homeMini !== false);
+  { const pm = document.getElementById('setPlayerMode'); if(pm) pm.value = DB.settings.playerMode || 'auto'; }
   set('setPauseChk', !!DB.settings.pauseTyping);
   set('pauseTypingChk', !!DB.settings.pauseTyping);
   const ls = document.getElementById('limitSelect'); if(ls) ls.value = String(parseInt(DB.settings.perChannelLimit, 10) || 0);
@@ -2839,6 +2914,10 @@ function syncSettingControls(){
 }
 document.getElementById('setFocusChk').addEventListener('change', (e)=>{ DB.settings.focusPlayer = e.target.checked; saveNow(); applyFocus(); });
 document.getElementById('setPipChk').addEventListener('change', (e)=>{ DB.settings.pip = e.target.checked; saveNow(); pipReport(true); });
+document.getElementById('setPlayerMode').addEventListener('change', (e)=>{
+  DB.settings.playerMode = e.target.value; modeNow = null; autoProxy = false; saveNow();
+  if(currentVideoId && !(ytPlayer && ytPlayer.__local)){ const t = (pl() && pl().getCurrentTime && pl().getCurrentTime()) || 0; hidePlayerFallback(); loadVideoInPlayer(currentVideoId, t); }
+});
 document.getElementById('setHomeMiniChk').addEventListener('change', (e)=>{ DB.settings.homeMini = e.target.checked; saveNow(); if(e.target.checked) restoreLastVideo(); });
 document.getElementById('setMiniChk').addEventListener('change', (e)=>{ DB.settings.miniPlayer = e.target.checked; saveNow(); });
 ['setPauseChk','pauseTypingChk'].forEach(id=>document.getElementById(id).addEventListener('change', (e)=>{ DB.settings.pauseTyping = e.target.checked; saveNow(); syncSettingControls(); }));
@@ -3934,6 +4013,13 @@ document.getElementById('btnCloze').addEventListener('click', ()=>{
   ta.focus(); ta.setSelectionRange(pos, pos); ta.dispatchEvent(new Event('input'));
 });
 document.getElementById('btnCloze').addEventListener('mousedown', (e)=>e.preventDefault());
+document.getElementById('btnStamp').addEventListener('mousedown', (e)=>e.preventDefault());
+document.getElementById('btnStamp').addEventListener('click', ()=>{
+  const ta = document.getElementById('noteInput'), s = '[' + fmtSecs(Math.max(0, Math.floor(curTime()))) + '] ';
+  const a = ta.selectionStart == null ? ta.value.length : ta.selectionStart, b = ta.selectionEnd == null ? a : ta.selectionEnd;
+  ta.value = ta.value.slice(0, a) + s + ta.value.slice(b);
+  ta.focus(); ta.setSelectionRange(a + s.length, a + s.length); ta.dispatchEvent(new Event('input'));
+});
 const TEMPLATES = [
   {name:'🩺 Medical (SOAP)', body:'S: \nO: \nA: \nP: '},
   {name:'💻 Problem / Solution', body:'Problem: \nApproach: \nSolution: \nKey idea: '},

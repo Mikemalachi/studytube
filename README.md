@@ -112,3 +112,9 @@ Tap 🖼️ next to the note box to pick a screenshot or photo, or paste one (Ct
 
 ### Editing notes
 Tap ✏️ Edit on any note in the Player's Notes list. The note turns into a text box right under the video, so you can keep watching. **⏱ Insert time** puts the current video time (like `[2:05]`) into the text at the cursor; **🕒 Note → now** moves the note itself to the current time; 🖼️ adds a picture, ✕ on a picture removes it. Save (or Ctrl+Enter) keeps the changes, Cancel (or Esc) throws them away. A `[m:ss]` in a note is tappable (jumps there) and becomes a link in Markdown and HTML exports. Handwriting is still changed with "✍️ Ink" on the note.
+
+### Compatibility player (fixes a black video in the Android app)
+YouTube refuses to play inside some app shells because they have no real web address ("error 153"). `www/yt.html` is a tiny page that must be published with the site (GitHub Pages). In the Android app the player now loads YouTube through that page, so YouTube sees your real address. Settings → "YouTube player": **Automatic** (default: compatibility player in the app, direct on the web, and it switches by itself if the direct player fails), **Direct**, or **Compatibility**. Check it after publishing by opening `https://mikemalachi.github.io/studytube/yt.html?v=dQw4w9WgXcQ` in a browser: you should see a video player.
+
+### Time stamp while writing
+The `[⏱]` button above the note box types the current video time (like `[2:05]`) into the note at the cursor.

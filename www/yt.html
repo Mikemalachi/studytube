@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>StudyTube player</title>
+<style>html,body,#p{margin:0;height:100%;background:#000;overflow:hidden}</style>
+</head><body><div id="p"></div>
+<script>
+/* StudyTube compatibility player.
+   YouTube refuses to play inside some app shells (error 153) because they have no real web address.
+   This page lives on the real site, embeds YouTube from here, and relays playback to the app with postMessage. */
+(function(){
+  var q = new URLSearchParams(location.search), par = window.parent, pl = null, ready = false, pend = null, tm = null;
+  var ID = /^[\w-]{11}$/;
+  function send(o){ o.stp = 1; try{ par.postMessage(o, '*'); }catch(e){} }
+  function tick(){
+    if(!pl || !ready) return;
+    try{ send({ev:'tick', s:pl.getPlayerState(), t:pl.getCurrentTime() || 0, d:pl.getDuration() || 0, r:pl.getPlaybackRate() || 1}); }catch(e){}
+  }
+  function make(id, start){
+    pl = new YT.Player('p', {width:'100%', height:'100%', videoId:id,
+      playerVars:{start:Math.floor(start || 0), rel:0, playsinline:1, enablejsapi:1, origin:location.origin},
+      events:{
+        onReady:function(){
+          ready = true; var rates = []; try{ rates = pl.getAvailablePlaybackRates(); }catch(e){}
+          send({ev:'ready', rates:rates}); clearInterval(tm); tm = setInterval(tick, 250);
+          if(pend){ pl.loadVideoById({videoId:pend.id, startSeconds:pend.start}); pend = null; }
+        },
+        onStateChange:function(e){ send({ev:'state', s:e.data}); tick(); },
+        onError:function(e){ send({ev:'error', code:e.data}); }
+      }});
+  }
+  window.addEventListener('message', function(e){
+    if(e.source !== par) return;
+    var m = e.data; if(!m || m.stp !== 1) return;
+    try{
+      if(m.cmd === 'load' && ID.test(m.id || '')){ if(pl && ready) pl.loadVideoById({videoId:m.id, startSeconds:+m.start || 0}); else pend = {id:m.id, start:+m.start || 0}; }
+      else if(!pl || !ready) return;
+      else if(m.cmd === 'play') pl.playVideo();
+      else if(m.cmd === 'pause') pl.pauseVideo();
+      else if(m.cmd === 'seek') pl.seekTo(+m.t || 0, true);
+      else if(m.cmd === 'rate') pl.setPlaybackRate(+m.r || 1);
+    }catch(err){}
+  });
+  window.onYouTubeIframeAPIReady = function(){
+    var id = q.get('v') || '';
+    if(ID.test(id)) make(id, +q.get('start') || 0);
+    else send({ev:'error', code:2});
+  };
+  var s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api';
+  s.onerror = function(){ send({ev:'error', code:-2}); };
+  document.head.appendChild(s);
+  send({ev:'hello'});
+})();
+</script>
+</body></html>
